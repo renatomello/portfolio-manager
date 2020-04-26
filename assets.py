@@ -5,7 +5,7 @@ from pandas import read_sql_query
 from alpha_vantage.timeseries import TimeSeries
 
 
-class Asset():
+class Update_Assets():
     def __init__(self, asset, name = 'asset_import', **kwargs):
         self.database = kwargs.get('database', 'database.db')
         self.timer = False
@@ -17,7 +17,7 @@ class Asset():
         self.get_credentials()
 
         self.update_asset_database()
-
+    
     def check_assets(self):
         if (isinstance(self.asset, str) == False) and (isinstance(self.asset, list) == False):
             raise Exception('{} not {} nor {}'.format(self.asset, str, list))
