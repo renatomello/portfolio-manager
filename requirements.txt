@@ -1,0 +1,8 @@
+numpy
+pandas
+alpha_vantage
+gunicorn
+dash
+dash-bootstrap-components
+flask
+flask-restful
