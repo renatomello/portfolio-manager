@@ -60,18 +60,18 @@ def build_tabs():
         children = [
             dcc.Tabs(
                 id = 'app-tabs',
-                value = 'tab2',
+                value = 'tab1',
                 className = 'custom-tabs',
                 children = [
                     dcc.Tab(
-                        id = 'Specs-tab',
+                        id = 'Control-chart-tab',
                         label = 'General View',
                         value = 'tab1',
                         className = 'custom-tab',
                         selected_className = 'custom-tab--selected',
                     ),
                     dcc.Tab(
-                        id = 'Control-chart-tab',
+                        id = 'Specs-tab',
                         label = 'Advanced Charts',
                         value = 'tab2',
                         className = 'custom-tab',
@@ -133,9 +133,9 @@ app.layout = html.Div(
         build_banner(),
         dcc.Interval(
             id='interval-component',
-            interval=2 * 1000,  # in milliseconds
-            n_intervals=50,  # start at batch 50
-            disabled=True,
+            interval = 2 * 1000,  # in milliseconds
+            n_intervals = 50,  # start at batch 50
+            disabled = True,
         ),
         html.Div(
             id = 'app-container',
@@ -151,7 +151,7 @@ app.layout = html.Div(
     ],
 )
 
-def build_tab_1():
+def build_tab_2():
     return [
         # Manually select metrics
         html.Div(
@@ -249,13 +249,13 @@ def build_top_panel(labels, values, title):
     return element
 
 @app.callback(
-    [Output('app-content', 'children')],#, Output('interval-component', 'n_intervals')],
+    [Output('app-content', 'children'), Output('interval-component', 'n_intervals')],
     [Input('app-tabs', 'value')],
     [State('n-interval-stage', 'data')],
 )
 def render_tab_content(tab_switch, stop_interval):
-    if tab_switch == 'tab1':
-        return build_tab_1()#, stop_interval
+    if tab_switch == 'tab2':
+        return build_tab_2()#, stop_interval
     element = (
         html.Div(
             id = 'status-container',
@@ -269,9 +269,49 @@ def render_tab_content(tab_switch, stop_interval):
             ],
             #style = {'width': '50%', 'display': 'inline-block', 'textAlign': 'center'},
         ),
-        #stop_interval
+        stop_interval
     )
     return element
 
+@app.callback(
+    Output("n-interval-stage", "data"),
+    [Input("app-tabs", "value")],
+    [
+        State("interval-component", "n_intervals"),
+        State("interval-component", "disabled"),
+        State("n-interval-stage", "data"),
+    ],
+)
+def update_interval_state(tab_switch, cur_interval, disabled, cur_stage):
+    if disabled:
+        return cur_interval
+
+    if tab_switch == "tab1":
+        return cur_interval
+    return cur_stage
+
+@app.callback(
+    [Output("interval-component", "disabled"), Output("stop-button", "buttonText")],
+    [Input("stop-button", "n_clicks")],
+    [State("interval-component", "disabled")],
+)
+def stop_production(n_clicks, current):
+    if n_clicks == 0:
+        return True, "start"
+    return not current, "stop" if current else "start"
+
+@app.callback(
+    Output("markdown", "style"),
+    [Input("learn-more-button", "n_clicks"), Input("markdown_close", "n_clicks")],
+)
+def update_click_output(button_click, close_click):
+    ctx = dash.callback_context
+
+    if ctx.triggered:
+        prop_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        if prop_id == "learn-more-button":
+            return {"display": "block"}
+
+    return {"display": "none"}
 if __name__ == '__main__':
     app.run_server(debug = True)
