@@ -10,6 +10,7 @@ from assets import Update_Assets
 
 import matplotlib.pyplot as plt
 
+
 #%%
 class Investments():
     def __init__(self, path = 'investments/', name = 'get_investments', **kwargs):
@@ -159,6 +160,7 @@ class Investments():
         self.portfolio['international stocks'] = self.portfolio_international_stocks
         self.portfolio['crypto'] = self.portfolio_crypto
         self.portfolio = concat(self.portfolio)
+        # self.portfolio = self.portfolio.loc[~(self.portfolio.asset == 'IPOC')].loc[~(self.portfolio.asset == 'IPOB')]
 
     def get_aggregate(self):
         assets = list(self.portfolio.index.unique(level = 0))
@@ -185,7 +187,7 @@ dollar = investments('dollar')
 investments('save')
 
 #%%
-vector = [1092.67, 4364.09]
+vector = [1088.86, 4423.30]
 aux = DataFrame({
     'asset': ['domestic stocks', 'domestics funds'],
     'value_brl': vector,
