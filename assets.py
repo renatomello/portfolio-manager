@@ -123,4 +123,4 @@ class Update_Assets():
                 self.update_stocks(new_asset, ticker, 'include')
             count +=1
 
-Update_Assets('twtr')
+# Update_Assets('twtr')
