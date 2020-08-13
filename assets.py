@@ -123,4 +123,68 @@ class Update_Assets():
                 self.update_stocks(new_asset, ticker, 'include')
             count +=1
 
-# Update_Assets('twtr')
+# Update_Assets('spy')
+# queries = [
+#     'dcf',
+#     'balance',
+#     'income',
+#     'cf',
+#     'ratio',
+#     'growth',
+# ]
+
+if __name__ == '__main__':
+    tickers = [
+        # 'AMZN',
+        # 'ARKK',
+        'BYND',
+        'HON',
+        'IBM',
+        'INTC',
+        # 'GOOGL',
+        'GS',
+        # 'IPOB',
+        # 'IPOC',
+        # 'SPCE',
+        # 'SPOT',
+        # 'TSLA',
+        # 'TWTR',
+        # 'WORK',
+        'BIDI11',
+        'BBAS3',
+        'BBDC4',
+        'EGIE3',
+        'ITSA4',
+        'TAEE11',
+        'TIET11',
+        'WEGE3',
+        'WHRL4',
+        'ENBR3',
+        'KO',
+        'BABA',
+        'BIOM3',
+        'SMLL',
+        'BRML3',
+        'VIVA3',
+        'OIBR3',
+        'GLD',
+        'OZ1D',
+        'OZ2D',
+        'OZ3D',
+        'AAPL',
+        'FB',
+        'NFLX',
+        'MSFT',
+        # 'BRK.A',
+        'SPY',
+        'IVV',
+        'VGTSX',
+        'IAU',
+        'FXI',
+        'EFV',
+        'EWY',
+    ]
+    for ticker in tickers:
+        print(ticker)
+        Update_Assets(ticker)
+
