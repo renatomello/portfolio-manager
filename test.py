@@ -1,4 +1,5 @@
 #%%
+from time import sleep
 from datetime import date
 from datetime import datetime as dt
 from os import path, listdir
@@ -10,6 +11,146 @@ from assets import Update_Assets
 
 import matplotlib.pyplot as plt
 
+from yahoo_earnings_calendar import YahooEarningsCalendar
+
+import FundamentalAnalysis as fa
+
+key = '6932feb0028eb33d25c8f70b36258084'
+
+#%%
+def dataframe(ticker, key, query, period = 'quarter'):
+    try:
+        if query == 'dcf':
+            df = fa.discounted_cash_flow(ticker = ticker, api_key = key, period = period)
+        if query == 'balance':
+            df = fa.balance_sheet_statement(ticker = ticker, api_key = key, period = period)
+        if query == 'income':
+            df = fa.income_statement(ticker = ticker, api_key = key, period = period)
+        if query == 'cf':
+            df = fa.cash_flow_statement(ticker = ticker, api_key = key, period = period)
+        if query == 'ratio':
+            df = fa.financial_ratios(ticker = ticker, api_key = key, period = period)
+        if query == 'growth':
+            df = fa.financial_statement_growth(ticker = ticker, api_key = key, period = period)
+        df = df.transpose().sort_index()
+    except:
+        df = DataFrame()
+    return df
+
+#%%
+# queries = [
+#     'dcf',
+#     'balance',
+#     'income',
+#     'cf',
+#     'ratio',
+#     'growth',
+# ]
+
+# tickers = [
+#     'AMZN',
+#     'ARKK',
+#     'BYND',
+#     'HON',
+#     'IBM',
+#     'INTC',
+#     'ibm',
+#     'GOOGL',
+#     'GS',
+#     'IPOB',
+#     'IPOC',
+#     'ibm',
+#     'SPCE',
+#     'SPOT',
+#     'TSLA',
+#     'TWTR',
+#     'WORK',
+#     'BIDI11',
+#     'BBAS3',
+#     'BBDC4',
+#     'EGIE3',
+#     'ITSA4',
+#     'TAEE11',
+#     'TIET11',
+#     'WEGE3',
+#     'WHRL4',
+# ]
+
+#%%
+# tickers = [
+#     # 'ENBR3',
+#     # 'KO',
+#     # 'BABA',
+#     # 'BIOM3',
+#     # 'SMLL',
+#     # 'BRML3',
+#     # 'VIVA3',
+#     # 'OIBR3',
+#     # 'GLD',
+#     # 'OZ1D',
+#     # 'OZ2D',
+#     # 'OZ3D',
+#     # 'AAPL',
+#     # 'FB',
+#     # 'NFLX',
+#     # 'MSFT',
+#     # 'BRK.A',
+#     'SPY',
+#     'IVV',
+#     'VGTSX',
+#     'IAU',
+#     'FXI',
+#     'EFV',
+#     'EWY',
+# ]
+
+# #%%
+# for ticker in tickers:
+#     print(ticker)
+#     for query in queries:
+#         df = dataframe(ticker, key, query)
+#         if df.empty == False:
+#             connection = connect('{}.db'.format(query))
+#             df.to_sql(ticker, connection, if_exists = 'replace')
+#             connection.close()
+#         sleep(15.0)
+
+#%%
+connection = connect('ratio.db')
+ibm_ratio = read_sql_query('SELECT * FROM IBM', connection)
+connection.close()
+connection = connect('growth.db')
+ibm_growth = read_sql_query('SELECT * FROM IBM', connection)
+connection.close()
+
+#%%
+ibm_ratio.loc[ibm_ratio['index'] >= '2018-01'].plot('index', 'priceEarningsToGrowthRatio')
+ibm_ratio.loc[ibm_ratio['index'] >= '2018-01'].plot('index', 'priceEarningsRatio')
+
+#%%
+ibm_growth.loc[ibm_growth['index'] >= '2015-01'].plot('index', 'priceEarningsRatio')
+
+#%%
+ibm_ratio[['index', 'cashPerShare']].tail()
+
+#%%
+ibm_ratio.loc[ibm['index'] >= '2000-01'].plot('index', 'cashPerShare')
+ibm_ratio.loc[ibm['index'] >= '2002-01'].plot('index', 'priceToFreeCashFlowsRatio')
+
+#%%
+ibm_ratio.loc[ibm_ratio['index'] >= '2013-10'].plot('index', 'priceEarningsToGrowthRatio')
+
+#%%
+yec = YahooEarningsCalendar()
+vector = yec.get_earnings_of('ibm')
+df = DataFrame(vector)
+df['startdatetime'] = [df['startdatetime'].str.split('T')[k][0] for k in range(len(df))]
+
+#%%
+df.dropna().sort_values('startdatetime').plot('startdatetime', 'epsactual')
+df
+
+#%%
 
 #%%
 class Investments():
@@ -187,7 +328,7 @@ dollar = investments('dollar')
 investments('save')
 
 #%%
-vector = [1088.86, 4423.30]
+vector = [1043.59, 4345.12]
 aux = DataFrame({
     'asset': ['domestic stocks', 'domestics funds'],
     'value_brl': vector,
@@ -220,3 +361,5 @@ plt.pie(
     )
 plt.tight_layout()
 plt.show()
+
+# %%
