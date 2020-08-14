@@ -1,6 +1,6 @@
 #%%
 from time import sleep
-from datetime import date
+from datetime import date, timedelta
 from datetime import datetime as dt
 from os import path, listdir
 from sqlite3 import connect
@@ -36,6 +36,12 @@ def dataframe(ticker, key, query, period = 'quarter'):
     except:
         df = DataFrame()
     return df
+
+#%%
+connection = connect('database.db')
+df = read_sql_query('SELECT * FROM USDBRL', connection)
+connection.close()
+df
 
 #%%
 # queries = [
@@ -172,6 +178,9 @@ class Investments():
         self.get_portfolio()
         self.get_aggregate()
 
+        self.get_benchmarks()
+        self.get_time_series()
+
     def __call__(self, flag = 'assets'):
         if flag == 'dollar':
             return self.dollar
@@ -191,6 +200,8 @@ class Investments():
             rounded.to_sql('portfolio', connection, if_exists = 'replace', index = False)
             rounded2.to_sql('aggregate', connection, if_exists = 'replace', index = False)
             connection.close()
+        if flag == 'time_series':
+            return self.portfolio_time_series
 
 
     def get_dollar(self):
@@ -315,6 +326,68 @@ class Investments():
             'value_usd': value_usd,
         })
 
+    def insert_weekends(self, df):
+        df.set_index('date', inplace = True)
+        start, end = df.index[0], df.index[-1]
+        start = dt.strptime(start, '%Y-%m-%d').date()
+        end = dt.strptime(end, '%Y-%m-%d').date()
+        dates = [str(start + timedelta(days = x)) for x in range(0, (end - start).days + 1, 1)]
+        df = df.reindex(dates, fill_value = 0)
+        df.reset_index(inplace = True)
+        adjusted_close = list()
+        for value in df.adjusted_close:
+            if value != 0:
+                adjusted_close.append(value)
+            if value == 0:
+                adjusted_close.append(adjusted_close[-1])
+        df.adjusted_close = adjusted_close
+        return df
+
+    def get_benchmarks(self):
+        connection = connect('database.db')
+        self.spy = read_sql_query('SELECT date, adjusted_close FROM SPY ORDER BY date', connection)
+        connection.close()
+        self.spy = self.insert_weekends(self.spy)
+
+    def get_returns(self, df):
+        reference = concat([self.international_stocks[['date', 'purchase_price']], self.crypto[['date', 'purchase_price']]])
+        reference = reference.groupby(by = 'date')['purchase_price'].sum()
+        reference = DataFrame(reference).reset_index()
+        df.reset_index(inplace = True)
+        returns = list()
+        for date in df['date'].iloc[1:]:
+            end = df.loc[df.date == date, 'position'].index[0]
+            start = end - 1
+            if date not in reference['date'].to_list():
+                retorno = (df.position.iloc[end] - df.position.iloc[start]) / df.position.iloc[start]
+                returns.append(retorno)
+            if date in reference['date'].to_list():
+                cash_flow = reference.loc[reference.date == date, 'purchase_price'].iloc[0]
+                retorno = (df.position.iloc[end] - (df.position.iloc[start] + cash_flow)) / (df.position.iloc[start] + cash_flow)
+                returns.append(retorno)
+        returns = [0] + returns
+        return returns
+
+    def get_time_series(self):
+        df = concat([self.international_stocks[['date', 'share']], self.crypto[['date', 'share']]])
+        quotes = df.index.unique(level = 0).to_list()
+        connection = connect('database.db')
+        self.portfolio_time_series = DataFrame()
+        for quote in quotes:
+            prices = read_sql_query("SELECT date, adjusted_close FROM {} ORDER BY date".format(quote), connection)
+            prices = self.insert_weekends(prices)
+            for data in df.loc[quote].date:
+                share = df.loc[quote].set_index('date').loc[data].iloc[0]
+                close_price = prices.loc[prices['date'] >= data]
+                close_price['position'] = [price * share for price in close_price.adjusted_close]
+                self.portfolio_time_series = concat([self.portfolio_time_series, close_price])
+        self.portfolio_time_series = self.portfolio_time_series.groupby(by = ['date'])['position'].sum()
+        self.portfolio_time_series = DataFrame(self.portfolio_time_series)
+        self.portfolio_time_series['SPY'] = self.spy.loc[(self.spy.date >= self.portfolio_time_series.index[0]) & (self.spy.date <= self.portfolio_time_series.index[-1])]['adjusted_close'].to_list()
+        self.portfolio_time_series = self.portfolio_time_series.loc[self.portfolio_time_series.index >= '2020-03-22']
+        self.portfolio_time_series['return_SPY'] = (self.portfolio_time_series.SPY.pct_change() + 1).fillna(1).cumprod() - 1
+        self.portfolio_time_series['return_position'] = self.get_returns(self.portfolio_time_series)
+        self.portfolio_time_series['return_position'] = (self.portfolio_time_series.return_position + 1).cumprod() - 1
 
 #%%
 investments = Investments()
@@ -325,7 +398,26 @@ _, crypto = investments('crypto')
 bonds, interests = investments('bonds')
 portfolio, portfolio_aggregate = investments('portfolio')
 dollar = investments('dollar')
-investments('save')
+# investments('save')
+time_series = investments('time_series')
+
+#%%
+x = time_series.date
+date_plot = [x.iloc[k] for k in range(0, len(x), 8)]
+y1 = time_series.return_position
+y2 = time_series.return_SPY
+
+fig, ax = plt.subplots(1, figsize = (8, 5))
+fig.tight_layout()
+ax.plot(x, y1, label = 'Portfolio')
+ax.plot(x, y2, label = 'SPY')
+leg = plt.legend(loc = 'upper left', frameon = False)
+for text in leg.get_texts():
+    plt.setp(text, color = 'black')
+ax.set_ylabel('Cumulative Returns')
+plt.xticks(date_plot)
+plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
+plt.show()
 
 #%%
 vector = [1043.59, 4345.12]

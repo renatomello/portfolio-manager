@@ -96,7 +96,7 @@ class Update_Assets():
             connection.commit()
             connection.close()
             lista = list()
-            for elem in dataframe.date:
+            for elem in dataframe['date']:
                 if type(elem) is not str:
                     lista.append(elem.date().strftime('%Y-%m-%d'))
                 else:
@@ -116,7 +116,7 @@ class Update_Assets():
                 sleep(60.0)
             if ticker in self.asset_list:
                 old_asset, _ = self.ts.get_daily_adjusted(symbol = ticker)
-                old_asset = old_asset[:2]
+                # old_asset = old_asset[:2]
                 self.update_stocks(old_asset, ticker, 'update')
             if ticker not in self.asset_list:
                 new_asset, _ = self.ts.get_daily_adjusted(symbol = ticker, outputsize = 'full')
@@ -124,27 +124,20 @@ class Update_Assets():
             count +=1
 
 # Update_Assets('spy')
-# queries = [
-#     'dcf',
-#     'balance',
-#     'income',
-#     'cf',
-#     'ratio',
-#     'growth',
-# ]
 
 if __name__ == '__main__':
     tickers = [
         # 'AMZN',
         # 'ARKK',
-        'BYND',
-        'HON',
-        'IBM',
-        'INTC',
+        # 'BYND',
+        # 'HON',
+        # 'IBM',
+        # 'INTC',
         # 'GOOGL',
-        'GS',
+        # 'GS',
         # 'IPOB',
         # 'IPOC',
+        # 'JPM',
         # 'SPCE',
         # 'SPOT',
         # 'TSLA',
@@ -159,32 +152,48 @@ if __name__ == '__main__':
         'TIET11',
         'WEGE3',
         'WHRL4',
-        'ENBR3',
-        'KO',
-        'BABA',
-        'BIOM3',
-        'SMLL',
-        'BRML3',
-        'VIVA3',
-        'OIBR3',
-        'GLD',
-        'OZ1D',
-        'OZ2D',
-        'OZ3D',
-        'AAPL',
-        'FB',
-        'NFLX',
-        'MSFT',
-        # 'BRK.A',
-        'SPY',
-        'IVV',
-        'VGTSX',
-        'IAU',
-        'FXI',
-        'EFV',
-        'EWY',
+        # 'ENBR3',
+        # 'KO',
+        # 'BABA',
+        # 'BIOM3',
+        # 'SMLL',
+        # 'BRML3',
+        # 'VIVA3',
+        # 'OIBR3',
+        # 'GLD',
+        # 'OZ1D',
+        # 'OZ2D',
+        # 'OZ3D',
+        # 'AAPL',
+        # 'FB',
+        # 'NFLX',
+        # 'MSFT',
+        # # 'BRK.A',
+        # 'SPY',
+        # 'IVV',
+        # 'VGTSX',
+        # 'IAU',
+        # 'FXI',
+        # 'EFV',
+        # 'EWY',
+        'IBOV',
+        ''
     ]
     for ticker in tickers:
         print(ticker)
         Update_Assets(ticker)
 
+
+# # %%
+# connection = connect('database.db')
+# # df = read_sql_query('SELECT * FROM SPY', connection)
+# df = read_sql_query('SELECT * FROM BIDI11', connection)
+# # df.sort_values(by = 'date', ascending = True, inplace = True)
+# # df.reset_index(inplace = True)
+# # df.drop('index', axis = 1, inplace = True)
+# # df.to_sql('SPY', connection, index = False, if_exists = 'replace')
+# connection.close()
+# df
+# # %%
+
+# %%
