@@ -15,7 +15,68 @@ from yahoo_earnings_calendar import YahooEarningsCalendar
 
 import FundamentalAnalysis as fa
 
+import yfinance
+
+from pypfopt.efficient_frontier import EfficientFrontier
+from pypfopt import risk_models
+from pypfopt import expected_returns
+
 key = '6932feb0028eb33d25c8f70b36258084'
+
+#%%
+tickers = [
+    # 'AMZN',
+    # 'ARKK',
+    # 'BYND',
+    # 'HON',
+    # 'IBM',
+    # 'INTC',
+    # 'GOOGL',
+    # 'GS',
+    # 'IPOB',
+    # 'IPOC',
+    # 'SPCE',
+    # 'SPOT',
+    # 'TSLA',
+    # 'TWTR',
+    # 'WORK',
+    # 'BIDI11.SA',
+    # 'BBAS3.SA',
+    # 'BBDC4.SA',
+    # 'EGIE3.SA',
+    # 'ITSA4.SA',
+    # 'TAEE11.SA',
+    # 'TIET11.SA',
+    # 'WEGE3.SA',
+    # 'WHRL4.SA',
+]
+
+#%%
+df_new = yfinance.Ticker('ITSA4.SA').history().reset_index()
+df_new = df_new.rename(columns = {'Date': 'date'})
+
+connection = connect('database.db')
+df = read_sql_query('SELECT * FROM ITSA4 ORDER BY date', connection)
+df = df.rename(columns = {'Date': 'date'})
+df['date'] = [dt.strptime(elem, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d') for elem in df.date]
+
+ticker = 'ITSA4'
+new = ticker + '_new'
+df_new.to_sql(new, connection, if_exists = 'replace', index = False)
+dataframe = read_sql_query('SELECT * FROM {} UNION SELECT * FROM {} ORDER BY date DESC'.format(ticker, new),connection)
+cursor = connection.cursor()
+cursor.execute('DROP TABLE {}'.format(new))
+connection.commit()
+
+dataframe = dataframe.rename(columns = {'Date': 'date'})
+dataframe['date'] = [dt.strptime(elem, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d') for elem in dataframe.date]
+dataframe.drop_duplicates('date', inplace = True)
+connection = connect('database.db')
+dataframe.to_sql(ticker, connection, if_exists = 'replace', index = False)
+connection.close()
+
+#%%
+dataframe
 
 #%%
 def dataframe(ticker, key, query, period = 'quarter'):
@@ -38,12 +99,6 @@ def dataframe(ticker, key, query, period = 'quarter'):
     return df
 
 #%%
-connection = connect('database.db')
-df = read_sql_query('SELECT * FROM USDBRL', connection)
-connection.close()
-df
-
-#%%
 # queries = [
 #     'dcf',
 #     'balance',
@@ -53,73 +108,73 @@ df
 #     'growth',
 # ]
 
-# tickers = [
-#     'AMZN',
-#     'ARKK',
-#     'BYND',
-#     'HON',
-#     'IBM',
-#     'INTC',
-#     'ibm',
-#     'GOOGL',
-#     'GS',
-#     'IPOB',
-#     'IPOC',
-#     'ibm',
-#     'SPCE',
-#     'SPOT',
-#     'TSLA',
-#     'TWTR',
-#     'WORK',
-#     'BIDI11',
-#     'BBAS3',
-#     'BBDC4',
-#     'EGIE3',
-#     'ITSA4',
-#     'TAEE11',
-#     'TIET11',
-#     'WEGE3',
-#     'WHRL4',
-# ]
+tickers = [
+    # 'AMZN',
+    # 'ARKK',
+    # 'BYND',
+    # 'HON',
+    # 'IBM',
+    # 'INTC',
+    # 'GOOGL',
+    # 'GS',
+    # 'IPOB',
+    # 'IPOC',
+    # 'SPCE',
+    # 'SPOT',
+    # 'TSLA',
+    # 'TWTR',
+    # 'WORK',
+    'BIDI11.SA',
+    'BBAS3.SA',
+    'BBDC4.SA',
+    'EGIE3.SA',
+    'ITSA4.SA',
+    'TAEE11.SA',
+    'TIET11.SA',
+    'WEGE3.SA',
+    'WHRL4.SA',
+]
 
 #%%
-# tickers = [
-#     # 'ENBR3',
-#     # 'KO',
-#     # 'BABA',
-#     # 'BIOM3',
-#     # 'SMLL',
-#     # 'BRML3',
-#     # 'VIVA3',
-#     # 'OIBR3',
-#     # 'GLD',
-#     # 'OZ1D',
-#     # 'OZ2D',
-#     # 'OZ3D',
-#     # 'AAPL',
-#     # 'FB',
-#     # 'NFLX',
-#     # 'MSFT',
-#     # 'BRK.A',
-#     'SPY',
-#     'IVV',
-#     'VGTSX',
-#     'IAU',
-#     'FXI',
-#     'EFV',
-#     'EWY',
-# ]
+tickers = [
+    'ENBR3.SA',
+    # 'KO',
+    # 'BABA',
+    'BIOM3.SA',
+    'SMLL.SA',
+    'BRML3.SA',
+    'VIVA3.SA',
+    'OIBR3.SA',
+    # 'GLD',
+    'OZ1D.SA',
+    'OZ2D.SA',
+    'OZ3D.SA',
+    # 'AAPL',
+    # 'FB',
+    # 'NFLX',
+    # 'MSFT',
+    # 'BRK.A',
+    # 'SPY',
+    # 'IVV',
+    # 'VGTSX',
+    # 'IAU',
+    # 'FXI',
+    # 'EFV',
+    # 'EWY',
+]
 
-# #%%
-# for ticker in tickers:
-#     print(ticker)
-#     for query in queries:
-#         df = dataframe(ticker, key, query)
-#         if df.empty == False:
-#             connection = connect('{}.db'.format(query))
-#             df.to_sql(ticker, connection, if_exists = 'replace')
-#             connection.close()
-#         sleep(15.0)
+#%%
+for ticker in tickers:
+    print(ticker.replace('.SA', ''))
+    # for query in queries:
+        # df = dataframe(ticker, key, query)
+    df =  yfinance.Ticker('ITSA4.SA').history(period = 'max').reset_index()
+    # if df.empty == False:
+    # connection = connect('{}.db'.format(query))
+    connection = connect('database.db')
+    df.to_sql(ticker.replace('.SA', ''), connection, if_exists = 'replace')
+    connection.close()
+    sleep(5.0)
 
 #%%
 connection = connect('ratio.db')
@@ -312,7 +367,7 @@ class Investments():
         self.portfolio['international stocks'] = self.portfolio_international_stocks
         self.portfolio['crypto'] = self.portfolio_crypto
         self.portfolio = concat(self.portfolio)
-        # self.portfolio = self.portfolio.loc[~(self.portfolio.asset == 'IPOC')].loc[~(self.portfolio.asset == 'IPOB')]
+        self.portfolio = self.portfolio.loc[~(self.portfolio.asset == 'IPOC')].loc[~(self.portfolio.asset == 'IPOB')]
 
     def get_aggregate(self):
         assets = list(self.portfolio.index.unique(level = 0))
@@ -384,7 +439,7 @@ class Investments():
         self.portfolio_time_series = self.portfolio_time_series.groupby(by = ['date'])['position'].sum()
         self.portfolio_time_series = DataFrame(self.portfolio_time_series)
         self.portfolio_time_series['SPY'] = self.spy.loc[(self.spy.date >= self.portfolio_time_series.index[0]) & (self.spy.date <= self.portfolio_time_series.index[-1])]['adjusted_close'].to_list()
-        self.portfolio_time_series = self.portfolio_time_series.loc[self.portfolio_time_series.index >= '2020-03-22']
+        # self.portfolio_time_series = self.portfolio_time_series.loc[self.portfolio_time_series.index >= '2020-03-22']
         self.portfolio_time_series['return_SPY'] = (self.portfolio_time_series.SPY.pct_change() + 1).fillna(1).cumprod() - 1
         self.portfolio_time_series['return_position'] = self.get_returns(self.portfolio_time_series)
         self.portfolio_time_series['return_position'] = (self.portfolio_time_series.return_position + 1).cumprod() - 1
@@ -400,6 +455,9 @@ portfolio, portfolio_aggregate = investments('portfolio')
 dollar = investments('dollar')
 # investments('save')
 time_series = investments('time_series')
+
+#%%
+time_series.return_SPY.corr(time_series.return_position)
 
 #%%
 x = time_series.date
@@ -420,7 +478,7 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-vector = [1043.59, 4345.12]
+vector = [1047.01, 4345.12]
 aux = DataFrame({
     'asset': ['domestic stocks', 'domestics funds'],
     'value_brl': vector,

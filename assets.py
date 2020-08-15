@@ -60,19 +60,29 @@ class Update_Assets():
         if flag == 'include':
             dataframe.to_sql(ticker, connection, if_exists = 'replace', index = False)
         if flag == 'update':
+            connection = connect('database.db')
+            new = ticker + '_new'
+            dataframe.to_sql(new, connection, if_exists = 'replace', index = False)
             cursor = connection.cursor()
-            for k in range(len(dataframe)):
-                df = dataframe.iloc[k]
-                lista = list(df.values)
-                lista, aux = lista[1:], lista[0]
-                lista.append(aux)
-                del aux
-                cursor.execute(
-                    'UPDATE {} SET open = (?), high = (?), low = (?), close = (?), \
-                    adjusted_close = (?), volume = (?), dividend_amount = (?), \
-                    split_coefficient = (?) WHERE date = (?)'.format(ticker), (tuple(lista))
-                )
+            cursor.execute('DELETE FROM {} WHERE rowId = 0 AND rowId = 1 AND rowId = 2'.format(ticker))
             connection.commit()
+            dataframe = read_sql_query('SELECT * FROM {} UNION SELECT * FROM {} ORDER BY date DESC'.format(ticker, new),connection)
+            cursor.execute('DROP TABLE {}'.format(new))
+            connection.commit()
+            connection.close()
+            # cursor = connection.cursor()
+            # for k in range(len(dataframe)):
+            #     df = dataframe.iloc[k]
+            #     lista = list(df.values)
+            #     lista, aux = lista[1:], lista[0]
+            #     lista.append(aux)
+            #     del aux
+            #     cursor.execute(
+            #         'UPDATE {} SET open = (?), high = (?), low = (?), close = (?), \
+            #         adjusted_close = (?), volume = (?), dividend_amount = (?), \
+            #         split_coefficient = (?) WHERE date = (?)'.format(ticker), (tuple(lista))
+            #     )
+            # connection.commit()
         connection.close()
     
     def update_fx(self, from_symbol, to_symbol):
@@ -143,15 +153,15 @@ if __name__ == '__main__':
         # 'TSLA',
         # 'TWTR',
         # 'WORK',
-        'BIDI11',
-        'BBAS3',
-        'BBDC4',
-        'EGIE3',
-        'ITSA4',
-        'TAEE11',
-        'TIET11',
-        'WEGE3',
-        'WHRL4',
+        # 'BIDI11',
+        # 'BBAS3',
+        # 'BBDC4',
+        # 'EGIE3',
+        # 'ITSA4',
+        # 'TAEE11',
+        # 'TIET11',
+        # 'WEGE3',
+        # 'WHRL4',
         # 'ENBR3',
         # 'KO',
         # 'BABA',
@@ -160,24 +170,24 @@ if __name__ == '__main__':
         # 'BRML3',
         # 'VIVA3',
         # 'OIBR3',
-        # 'GLD',
+        'GLD',
         # 'OZ1D',
         # 'OZ2D',
         # 'OZ3D',
-        # 'AAPL',
-        # 'FB',
-        # 'NFLX',
-        # 'MSFT',
-        # # 'BRK.A',
+        'AAPL',
+        'FB',
+        'NFLX',
+        'MSFT',
+        # 'BRK.A',
         # 'SPY',
-        # 'IVV',
-        # 'VGTSX',
-        # 'IAU',
-        # 'FXI',
-        # 'EFV',
-        # 'EWY',
-        'IBOV',
-        ''
+        'IVV',
+        'VGTSX',
+        'IAU',
+        'FXI',
+        'EFV',
+        'EWY',
+        # 'IBOV',
+        # ''
     ]
     for ticker in tickers:
         print(ticker)
@@ -194,6 +204,6 @@ if __name__ == '__main__':
 # # df.to_sql('SPY', connection, index = False, if_exists = 'replace')
 # connection.close()
 # df
-# # %%
 
 # %%
+
