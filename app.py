@@ -10,7 +10,18 @@ from investiments import Investments
 
 import matplotlib.pyplot as plt
 
-key = ''
+key = '12FCWWSQ0N28V8QV'
+
+#%%
+assets = [
+    'AMZN',
+    'ITSA4',
+    'BTCUSD',
+    'BRLGBP',
+    'USDEUR',
+]
+
+Update_Assets(key = key, asset = assets)
 
 #%%
 investments = Investments(start_date_returns = '2020-01-02')
