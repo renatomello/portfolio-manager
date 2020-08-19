@@ -2,24 +2,37 @@
 from time import sleep
 from sqlite3 import connect
 
-from pandas import read_sql_query
+from pandas import read_sql_query, read_csv
 from alpha_vantage.timeseries import TimeSeries
+from alpha_vantage.cryptocurrencies import CryptoCurrencies
 from alpha_vantage.foreignexchange import ForeignExchange
 
 
 class Update_Assets():
-    def __init__(self, asset, name = 'asset_import', **kwargs):
-        self.database = kwargs.get('database', 'database.db')
+    def __init__(self, asset = '', name = 'asset_import', **kwargs):
+        self.kwargs = kwargs
+        self.hyperparameters()
+        self.get_asset_list()
+        self.get_fx_crypto_list()
+        self.asset = self.asset_list if asset == '' else asset
+        self.check_assets()
+        self.get_credentials()
+        # self.update_crypto_database()
+        # self.update_fx_database()
+        self.update_asset_database()
+
+    def hyperparameters(self):
+        self.key = self.kwargs.get('key')
+        self.database = self.kwargs.get('database', 'database.db')
+
+        self.currencies = self.kwargs.get('currencies', 'currencies.csv')
+        self.currencies = read_csv(self.currencies)
+
+        self.cryptos = self.kwargs.get('cryptos', 'cryptos.csv')
+        self.cryptos = read_csv(self.cryptos)
+
         self.timer = False
 
-        self.asset = asset
-        self.check_assets()
-
-        self.get_asset_list()
-        self.get_credentials()
-
-        self.update_asset_database()
-    
     def check_assets(self):
         if (isinstance(self.asset, str) == False) and (isinstance(self.asset, list) == False):
             raise Exception('{} not {} nor {}'.format(self.asset, str, list))
@@ -34,176 +47,131 @@ class Update_Assets():
             self.asset = [self.asset.upper()]
 
     def get_credentials(self):
-        key = '12FCWWSQ0N28V8QV'
-        self.ts = TimeSeries(key = key, output_format = 'pandas')
-        self.fx = ForeignExchange(key = key, output_format = 'pandas')
+        self.ts = TimeSeries(key = self.key, output_format = 'pandas')
+        self.fx = ForeignExchange(key = self.key, output_format = 'pandas')
+        self.cc = CryptoCurrencies(key = self.key, output_format='pandas')
+
+    def get_fx_crypto_list(self):
+        self.fx_list, self.crypto_list = list(), list()
+        for ticker in self.asset_list:
+            currency_from, currency_to = ticker[:3], ticker[3:]
+            if (currency_from in self.currencies.currency_code.to_list()) & (currency_to in self.currencies.currency_code.to_list()):
+                self.fx_list.append(ticker)
+            if (currency_from in self.cryptos.currency_code.to_list()) & (currency_to in self.currencies.currency_code.to_list()):
+                self.crypto_list.append(ticker)
 
     def get_asset_list(self):
         connection = connect(self.database)
         self.asset_list = read_sql_query("SELECT name FROM sqlite_master WHERE type='table';", connection).name
+        connection.close()
         self.asset_list = list(self.asset_list)
         self.asset_list.sort()
-        connection.close()
+        if isinstance(self.asset_list, list):
+            try:
+                self.asset_list.remove('aggregate')
+                self.asset_list.remove('portfolio')
+            except ValueError:
+                pass
 
-    def rename_reset(self, df):
+    def rename_reset(self, df, crypto = False):
         keys = list(df.columns)
-        values = [item[3:].replace(' ', '_') for item in list(df.columns)]
+        if crypto == False:
+            values = [item[3:].replace(' ', '_') for item in list(df.columns)]
+        if crypto == True:
+            values = [item[3:].replace(' (USD)', '').replace(' ', '_') for item in list(df.columns)]
+            for k, item in enumerate(values):
+                if item.startswith('_'):
+                    values[k] = item.replace('_', '')
         dictionary = dict(zip(keys, values))
         df.rename(columns = dictionary, inplace = True)
         df.reset_index(inplace = True)
+        df = df.loc[:, ~df.columns.duplicated()]
         return df
 
     def update_stocks(self, dataframe, ticker, flag):
+        ticker = ticker.replace('.SA', '')
         dataframe = self.rename_reset(dataframe)
         dataframe['date'] = [elem.date().strftime('%Y-%m-%d') for elem in dataframe.date]
         connection = connect(self.database)
         if flag == 'include':
             dataframe.to_sql(ticker, connection, if_exists = 'replace', index = False)
         if flag == 'update':
-            connection = connect('database.db')
-            new = ticker + '_new'
-            dataframe.to_sql(new, connection, if_exists = 'replace', index = False)
+            reference = read_sql_query('SELECT date FROM {} ORDER BY date DESC LIMIT 1'.format(ticker), connection)
+            reference = reference.values[0][0]
             cursor = connection.cursor()
-            cursor.execute('DELETE FROM {} WHERE rowId = 0 AND rowId = 1 AND rowId = 2'.format(ticker))
+            cursor.execute("DELETE FROM {} WHERE date LIKE '%{}%'".format(ticker, reference))
             connection.commit()
-            dataframe = read_sql_query('SELECT * FROM {} UNION SELECT * FROM {} ORDER BY date DESC'.format(ticker, new),connection)
-            cursor.execute('DROP TABLE {}'.format(new))
-            connection.commit()
-            connection.close()
-            # cursor = connection.cursor()
-            # for k in range(len(dataframe)):
-            #     df = dataframe.iloc[k]
-            #     lista = list(df.values)
-            #     lista, aux = lista[1:], lista[0]
-            #     lista.append(aux)
-            #     del aux
-            #     cursor.execute(
-            #         'UPDATE {} SET open = (?), high = (?), low = (?), close = (?), \
-            #         adjusted_close = (?), volume = (?), dividend_amount = (?), \
-            #         split_coefficient = (?) WHERE date = (?)'.format(ticker), (tuple(lista))
-            #     )
-            # connection.commit()
+            dataframe = dataframe.loc[dataframe.date >= reference]
+            dataframe.to_sql(ticker, connection, if_exists = 'append', index = False)
         connection.close()
     
-    def update_fx(self, from_symbol, to_symbol):
-        ticker = from_symbol + to_symbol
-        if ticker not in self.asset_list:
-            dataframe, _ = self.fx.get_currency_exchange_daily(from_symbol = from_symbol, to_symbol = to_symbol, outputsize = 'full')
-        else:
-            dataframe, _ = self.fx.get_currency_exchange_daily(from_symbol = from_symbol, to_symbol = to_symbol)
-        sleep(30.0)
-        dataframe = self.rename_reset(dataframe)
-        dataframe['date'] = [elem.date().strftime('%Y-%m-%d') for elem in dataframe.date]
-        if ticker in self.asset_list:
-            connection = connect('database.db')
-            new = ticker + '_new'
-            dataframe.to_sql(new, connection, if_exists = 'replace', index = False)
+    def update_fx(self, df, currency):
+        print('FX: {}'.format(currency))
+        df = self.rename_reset(df)
+        df['date'] = [elem.date().strftime('%Y-%m-%d') for elem in df.date]
+        connection = connect(self.database)
+        if currency not in self.fx_list:
+            df.to_sql(currency, connection, if_exists = 'replace', index = False)
+        if currency in self.fx_list:
+            reference = read_sql_query('SELECT date FROM {} ORDER BY date DESC LIMIT 1'.format(currency), connection)
+            reference = reference.values[0][0]
             cursor = connection.cursor()
-            cursor.execute('DELETE FROM {} WHERE rowId = 0 AND rowId = 1 AND rowId = 2'.format(ticker))
+            cursor.execute("DELETE FROM {} WHERE date LIKE '%{}%'".format(currency, reference))
             connection.commit()
-            dataframe = read_sql_query('SELECT * FROM {} UNION SELECT * FROM {} ORDER BY date DESC'.format(ticker, new),connection)
-            cursor.execute('DROP TABLE {}'.format(new))
-            connection.commit()
-            connection.close()
-            lista = list()
-            for elem in dataframe['date']:
-                if type(elem) is not str:
-                    lista.append(elem.date().strftime('%Y-%m-%d'))
-                else:
-                    lista.append(elem)
-            dataframe['date'] = lista
-
-        connection = connect('database.db')
-        dataframe.to_sql(ticker, connection, if_exists = 'replace', index = False)
+            df = df.loc[df.date >= reference]
+            df.to_sql(currency, connection, if_exists = 'append', index = False)
         connection.close()
 
+    def update_crypto(self, df, currency):
+        print('Crypto: {}'.format(currency))
+        df = self.rename_reset(df, crypto = True)
+        df['date'] = [elem.date().strftime('%Y-%m-%d') for elem in df.date]
+        connection = connect(self.database)
+        if currency not in self.crypto_list:
+            df.to_sql(currency, connection, if_exists = 'replace', index = False)
+        if currency in self.crypto_list:
+            reference = read_sql_query('SELECT date FROM {} ORDER BY date DESC LIMIT 1'.format(currency), connection)
+            reference = reference.values[0][0]
+            cursor = connection.cursor()
+            cursor.execute("DELETE FROM {} WHERE date LIKE '%{}%'".format(currency, reference))
+            connection.commit()
+            df = df.loc[df.date >= reference]
+            df.to_sql(currency, connection, if_exists = 'append', index = False)
+        connection.close()
+
+    def update_stock_database(self, ticker):
+        print('Stock: {}'.format(ticker))
+        if any(letter.isdigit() for letter in ticker) == True:
+            ticker = ticker + '.SA'
+        if ticker in self.asset_list:
+            old_asset, _ = self.ts.get_daily_adjusted(symbol = ticker)
+            self.update_stocks(old_asset, ticker, 'update')
+        if ticker not in self.asset_list:
+            new_asset, _ = self.ts.get_daily_adjusted(symbol = ticker, outputsize = 'full')
+            self.update_stocks(new_asset, ticker, 'include')
+
+    def update_fx_database(self, currency_from, currency_to):
+        currency = currency_from + currency_to
+        if currency not in self.fx_list:
+            df, _ = self.fx.get_currency_exchange_daily(from_symbol = currency_from, to_symbol = currency_to, outputsize = 'full')
+        if currency in self.fx_list:
+            df, _ = self.fx.get_currency_exchange_daily(from_symbol = currency_from, to_symbol = currency_to)
+        self.update_fx(df, currency)
+
+    def update_crypto_database(self, currency_from, currency_to):
+        currency = currency_from + currency_to
+        df, _ = self.cc.get_digital_currency_daily(symbol = currency_from, market = currency_to)
+        self.update_crypto(df, currency)
+
     def update_asset_database(self):
-        count = 0
-        self.update_fx(from_symbol = 'BRL', to_symbol = 'USD')
-        self.update_fx(from_symbol = 'USD', to_symbol = 'BRL')
-        for ticker in self.asset:
-            if (count % 4 == 0) and (count != 0):
+        print('Updating database...')
+        for count, ticker in enumerate(self.asset):
+            if (count % 2 == 0) and (count != 0):
                 sleep(60.0)
-            if ticker in self.asset_list:
-                old_asset, _ = self.ts.get_daily_adjusted(symbol = ticker)
-                # old_asset = old_asset[:2]
-                self.update_stocks(old_asset, ticker, 'update')
-            if ticker not in self.asset_list:
-                new_asset, _ = self.ts.get_daily_adjusted(symbol = ticker, outputsize = 'full')
-                self.update_stocks(new_asset, ticker, 'include')
-            count +=1
-
-# Update_Assets('spy')
-
-if __name__ == '__main__':
-    tickers = [
-        # 'AMZN',
-        # 'ARKK',
-        # 'BYND',
-        # 'HON',
-        # 'IBM',
-        # 'INTC',
-        # 'GOOGL',
-        # 'GS',
-        # 'IPOB',
-        # 'IPOC',
-        # 'JPM',
-        # 'SPCE',
-        # 'SPOT',
-        # 'TSLA',
-        # 'TWTR',
-        # 'WORK',
-        # 'BIDI11',
-        # 'BBAS3',
-        # 'BBDC4',
-        # 'EGIE3',
-        # 'ITSA4',
-        # 'TAEE11',
-        # 'TIET11',
-        # 'WEGE3',
-        # 'WHRL4',
-        # 'ENBR3',
-        # 'KO',
-        # 'BABA',
-        # 'BIOM3',
-        # 'SMLL',
-        # 'BRML3',
-        # 'VIVA3',
-        # 'OIBR3',
-        'GLD',
-        # 'OZ1D',
-        # 'OZ2D',
-        # 'OZ3D',
-        'AAPL',
-        'FB',
-        'NFLX',
-        'MSFT',
-        # 'BRK.A',
-        # 'SPY',
-        'IVV',
-        'VGTSX',
-        'IAU',
-        'FXI',
-        'EFV',
-        'EWY',
-        # 'IBOV',
-        # ''
-    ]
-    for ticker in tickers:
-        print(ticker)
-        Update_Assets(ticker)
-
-
-# # %%
-# connection = connect('database.db')
-# # df = read_sql_query('SELECT * FROM SPY', connection)
-# df = read_sql_query('SELECT * FROM BIDI11', connection)
-# # df.sort_values(by = 'date', ascending = True, inplace = True)
-# # df.reset_index(inplace = True)
-# # df.drop('index', axis = 1, inplace = True)
-# # df.to_sql('SPY', connection, index = False, if_exists = 'replace')
-# connection.close()
-# df
-
-# %%
-
+            currency_from, currency_to = ticker[:3], ticker[3:]
+            if (currency_from in self.currencies.currency_code.to_list()) & (currency_to in self.currencies.currency_code.to_list()):
+                self.update_fx_database(currency_from = currency_from, currency_to = currency_to)
+            elif (currency_from in self.cryptos.currency_code.to_list()) & (currency_to in self.currencies.currency_code.to_list()):
+                self.update_crypto_database(currency_from = currency_from, currency_to = currency_to)
+            else:
+                self.update_stock_database(ticker)
