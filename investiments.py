@@ -86,7 +86,7 @@ class Investments():
             self.total_returns_brl += value
         self.total_returns_usd = self.total_returns_brl * self.dollar
         self.portfolio_bonds = DataFrame({
-            'asset': ['DOMESTIC BONDS'],
+            'asset': ['domestic bonds'],
             'quotas': [1],
             'value_usd': [self.total_returns_usd],
             'value_brl': [self.total_returns_brl],
@@ -183,11 +183,12 @@ class Investments():
 
     def get_portfolio(self):
         self.portfolio = dict()
-        self.portfolio['bonds'] = self.portfolio_bonds
-        self.portfolio['domestic_stocks'] = self.portfolio_domestic_stocks
+        self.portfolio['domestic bonds'] = self.portfolio_bonds
+        self.portfolio['domestic stocks'] = self.portfolio_domestic_stocks
         self.portfolio['international stocks'] = self.portfolio_international_stocks
         self.portfolio['crypto'] = self.portfolio_crypto
         self.portfolio = concat(self.portfolio)
+        self.portfolio = self.portfolio.loc[~(self.portfolio.quotas == 0.)]
         # self.portfolio = self.portfolio.loc[~(self.portfolio.asset == 'IPOC')].loc[~(self.portfolio.asset == 'IPOB')]
 
     def get_aggregate(self):
@@ -235,25 +236,25 @@ class Investments():
         returns = list()
         if flag == 'cumulative':
             for date in df['date'].iloc[1:]:
-                end = df.loc[df.date == date, 'position'].index[0]
+                end = df.loc[df.date == date, 'portfolio'].index[0]
                 start = end - 1
                 if date not in reference['date'].to_list():
-                    retorno = (df.position.iloc[end] - df.position.iloc[start]) / df.position.iloc[start]
+                    retorno = (df.portfolio.iloc[end] - df.portfolio.iloc[start]) / df.portfolio.iloc[start]
                     returns.append(retorno)
                 if date in reference['date'].to_list():
                     cash_flow = reference.loc[reference.date == date, 'purchase_price'].iloc[0]
-                    retorno = (df.position.iloc[end] - (df.position.iloc[start] + cash_flow)) / (df.position.iloc[start] + cash_flow)
+                    retorno = (df.portfolio.iloc[end] - (df.portfolio.iloc[start] + cash_flow)) / (df.portfolio.iloc[start] + cash_flow)
                     returns.append(retorno)
             returns = [0] + returns
             returns = list(map(lambda x: x + 1, returns))
             returns = 100 * (cumprod(returns) - 1)
         if flag == 'cagr':
             for date in df['date'].iloc[1:]:
-                end = df.loc[df.date == date, 'position'].index[0]
+                end = df.loc[df.date == date, 'portfolio'].index[0]
                 start = df.index[1]
                 exponent = 365 / (end - start)
                 cash_flow = reference.loc[(reference.date >= self.start_date) & (reference.date <= date), 'purchase_price'].sum()
-                retorno = 100 * (((df.position.iloc[end] / (df.position.iloc[start] + cash_flow)) ** exponent) - 1)
+                retorno = 100 * (((df.portfolio.iloc[end] / (df.portfolio.iloc[start] + cash_flow)) ** exponent) - 1)
                 returns.append(retorno)
             returns = [0] + returns
         return returns
@@ -310,16 +311,16 @@ class Investments():
                 close_price = prices.loc[prices.date >=  data]
                 conversion = self.dollar_full.loc[self.dollar_full.date == data, 'adjusted_close'].iloc[0] if quote in self.domestic_tickers else 1.
                 if quote in self.fractions:
-                    close_price['position'] = [price * share * conversion for price in close_price.close]
+                    close_price['portfolio'] = [price * share * conversion for price in close_price.close]
                 else:
-                    close_price['position'] = [price * share * conversion for price in close_price.adjusted_close]
+                    close_price['portfolio'] = [price * share * conversion for price in close_price.adjusted_close]
                 dataframe = concat([dataframe, close_price])
         dataframe = dataframe.groupby(by = ['date']).sum().drop(columns = {'adjusted_close', 'close'})
         dataframe = DataFrame(dataframe).loc[(dataframe.index >= self.start_date) & (dataframe.index <= self.end_date)]
 
-        self.portfolio_time_series['position'] = dataframe['position'].to_list()
+        self.portfolio_time_series['portfolio'] = dataframe['portfolio'].to_list()
         self.portfolio_time_series.sort_values(by = 'date', inplace = True)
-        self.portfolio_time_series['return_position'] = self.get_returns(self.portfolio_time_series)
-        self.portfolio_time_series['cagr_position'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
+        self.portfolio_time_series['return_portfolio'] = self.get_returns(self.portfolio_time_series)
+        self.portfolio_time_series['cagr_portfolio'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
         self.portfolio_time_series.drop(columns = {'level_0', 'index'}, inplace = True)
         self.portfolio_time_series.set_index('date', inplace = True)
