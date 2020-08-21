@@ -10,8 +10,6 @@ from investiments import Investments
 
 import matplotlib.pyplot as plt
 
-import yfinance as yf
-
 key = ''
 
 Update_Assets(key = key)
