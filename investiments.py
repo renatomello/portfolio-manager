@@ -11,11 +11,7 @@ class Investments():
     def __init__(self, path = 'investments/', name = 'get_investments', **kwargs):
         self.kwargs = kwargs
         self.path = path
-        self.bonds_path, self.crypto_path = self.path + 'bonds/', self.path + 'crypto/'
-        self.domestic_stocks_path = self.path + 'stocks/domestic'
-        self.international_stocks_path = self.path + 'stocks/international/'
-        self.list_paths = [self.bonds_path, self.crypto_path, self.domestic_stocks_path, self.international_stocks_path]
-
+        self.hyperparameters()
         self.get_dollar()
         self.get_all_assets()
 
@@ -50,6 +46,13 @@ class Investments():
             connection.close()
         if flag == 'time_series':
             return self.portfolio_time_series
+
+    def hyperparameters(self):
+        self.database = self.kwargs.get('database', 'database.db')
+        self.bonds_path, self.crypto_path = self.path + 'bonds/', self.path + 'crypto/'
+        self.domestic_stocks_path = self.path + 'stocks/domestic'
+        self.international_stocks_path = self.path + 'stocks/international/'
+        self.list_paths = [self.bonds_path, self.crypto_path, self.domestic_stocks_path, self.international_stocks_path]
 
     def get_dollar(self):
         currency = 'BRLUSD'
@@ -230,36 +233,46 @@ class Investments():
         reference = DataFrame(reference).reset_index()
         df.reset_index(inplace = True)
         returns = list()
-        for date in df['date'].iloc[1:]:
-            end = df.loc[df.date == date, 'position'].index[0]
-            start = end - 1
-            if date not in reference['date'].to_list():
-                retorno = (df.position.iloc[end] - df.position.iloc[start]) / df.position.iloc[start]
-                returns.append(retorno)
-            if date in reference['date'].to_list():
-                cash_flow = reference.loc[reference.date == date, 'purchase_price'].iloc[0]
-                retorno = (df.position.iloc[end] - (df.position.iloc[start] + cash_flow)) / (df.position.iloc[start] + cash_flow)
-                returns.append(retorno)
-        returns = [0] + returns
-        returns = list(map(lambda x: x + 1, returns))
         if flag == 'cumulative':
+            for date in df['date'].iloc[1:]:
+                end = df.loc[df.date == date, 'position'].index[0]
+                start = end - 1
+                if date not in reference['date'].to_list():
+                    retorno = (df.position.iloc[end] - df.position.iloc[start]) / df.position.iloc[start]
+                    returns.append(retorno)
+                if date in reference['date'].to_list():
+                    cash_flow = reference.loc[reference.date == date, 'purchase_price'].iloc[0]
+                    retorno = (df.position.iloc[end] - (df.position.iloc[start] + cash_flow)) / (df.position.iloc[start] + cash_flow)
+                    returns.append(retorno)
+            returns = [0] + returns
+            returns = list(map(lambda x: x + 1, returns))
             returns = 100 * (cumprod(returns) - 1)
         if flag == 'cagr':
-            returns = [0] + [(returns[k] / returns[0]) ** (365 / k) - 1 for k in range(1, len(returns))]
+            returns = [0] + [(df.position.iloc[k] / df.position.iloc[0]) ** (365 / k) - 1 for k in range(1, len(df))]
         return returns
 
     def get_start_date(self):
         start_domestic = self.domestic_stocks[['date']].sort_values(by = 'date').iloc[0].values[0]
         start_international = self.international_stocks[['date']].sort_values(by = 'date').iloc[0].values[0]
         start_crypto = self.crypto[['date']].sort_values(by = 'date').iloc[0].values[0]
-        start_date = min(start_domestic, start_international,start_crypto)
+        start_date = min(start_domestic, start_international, start_crypto)
         self.start_date = self.kwargs.get('start_date_returns', start_date)
-        self.start_date = (dt.strptime(self.start_date, '%Y-%m-%d') - timedelta(days = 1)).strftime('%Y-%m-%d')
+        self.start_date = dt.strptime(self.start_date, '%Y-%m-%d').strftime('%Y-%m-%d')
     
     def get_end_date(self):
         end_spy = self.spy[['date']].sort_values(by = 'date').iloc[-1].values[0]
         end_bova =  self.bova[['date']].sort_values(by = 'date').iloc[-1].values[0]
-        self.end_date = min(end_spy, end_bova)
+        df = concat([self.domestic_stocks[['date']], self.international_stocks[['date']], self.crypto[['date']]])
+        quotes = df.index.unique(level = 0).to_list()
+        dates = [end_spy, end_bova]
+        connection = connect(self.database)
+        for quote in quotes:
+            date = read_sql_query('SELECT date FROM "{}" ORDER BY date'.format(quote), connection).iloc[-1].values[0]
+            dates.append(date)
+        connection.close()
+        end_date = min(dates)
+        self.end_date = self.kwargs.get('end_date_returns', end_date)
+        self.end_date = dt.strptime(self.end_date, '%Y-%m-%d').strftime('%Y-%m-%d')
 
     def get_time_series(self):
         self.get_start_date()
@@ -271,19 +284,19 @@ class Investments():
         self.portfolio_time_series['BOVA11'] = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date)]['adjusted_close_dollar'].to_list()
         self.portfolio_time_series['return_SPY'] = 100 * ((self.portfolio_time_series.SPY.pct_change() + 1).fillna(1).cumprod() - 1)
         self.portfolio_time_series['return_BOVA11'] = 100 * ((self.portfolio_time_series.BOVA11.pct_change() + 1).fillna(1).cumprod() - 1)
-        # self.portfolio_time_series['cagr_SPY'] = [0] + [((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
-        # self.portfolio_time_series['cagr_BOVA11'] = [0] + [((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
+        self.portfolio_time_series['cagr_SPY'] = [0] + [((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
+        self.portfolio_time_series['cagr_BOVA11'] = [0] + [((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
 
         dataframe = DataFrame()
         df = concat([self.domestic_stocks[['date', 'share']], self.international_stocks[['date', 'share']], self.crypto[['date', 'share']]])
         quotes = df.index.unique(level = 0).to_list()
         for quote in quotes:
-            connection = connect('database.db')
+            connection = connect(self.database)
             if quote in self.fractions:
-                prices = read_sql_query("SELECT date, close FROM {} ORDER BY date".format(quote), connection)
+                prices = read_sql_query("SELECT date, close FROM '{}' ORDER BY date".format(quote), connection)
                 prices = self.insert_weekends(prices, crypto = True)
             else:
-                prices = read_sql_query("SELECT date, adjusted_close FROM {} ORDER BY date".format(quote), connection)
+                prices = read_sql_query("SELECT date, adjusted_close FROM '{}' ORDER BY date".format(quote), connection)
                 prices = self.insert_weekends(prices)
             connection.close()
             for data, share in zip(df.loc[quote].date, df.loc[quote].share):
@@ -299,7 +312,6 @@ class Investments():
 
         self.portfolio_time_series['position'] = dataframe['position'].to_list()
         self.portfolio_time_series['return_position'] = self.get_returns(self.portfolio_time_series)
-        # self.portfolio_time_series['cagr_position'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
-        # self.portfolio_time_series.drop(columns = {'level_0', 'index'}, inplace = True)
-        self.portfolio_time_series.drop(columns = {'index'}, inplace = True)
+        self.portfolio_time_series['cagr_position'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
+        self.portfolio_time_series.drop(columns = {'level_0', 'index'}, inplace = True)
         self.portfolio_time_series.set_index('date', inplace = True)
