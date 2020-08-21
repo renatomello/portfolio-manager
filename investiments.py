@@ -253,7 +253,6 @@ class Investments():
                 start = df.index[1]
                 exponent = 365 / (end - start)
                 cash_flow = reference.loc[(reference.date >= self.start_date) & (reference.date <= date), 'purchase_price'].sum()
-                print(df.position.iloc[end].round(2), df.position.iloc[start].round(2), cash_flow.round(2))
                 retorno = 100 * (((df.position.iloc[end] / (df.position.iloc[start] + cash_flow)) ** exponent) - 1)
                 returns.append(retorno)
             returns = [0] + returns
