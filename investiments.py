@@ -285,15 +285,8 @@ class Investments():
     def get_time_series(self):
         self.get_start_date()
         self.get_end_date()
-
-        self.portfolio_time_series = DataFrame()
-        self.portfolio_time_series['date'] = self.spy.loc[(self.spy.date >= self.start_date) & (self.spy.date <= self.end_date), 'date'].to_list()
-        self.portfolio_time_series['SPY'] = self.spy.loc[(self.spy.date >= self.start_date) & (self.spy.date <= self.end_date), 'adjusted_close'].to_list()
-        self.portfolio_time_series['BOVA11'] = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date)]['adjusted_close_dollar'].to_list()
-        self.portfolio_time_series['return_SPY'] = 100 * ((self.portfolio_time_series.SPY.pct_change() + 1).fillna(1).cumprod() - 1)
-        self.portfolio_time_series['return_BOVA11'] = 100 * ((self.portfolio_time_series.BOVA11.pct_change() + 1).fillna(1).cumprod() - 1)
-        self.portfolio_time_series['cagr_SPY'] = [0] + [100 * ((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
-        self.portfolio_time_series['cagr_BOVA11'] = [0] + [100 * ((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
+        dates = [(dt.strptime(self.start_date, '%Y-%m-%d').date() + timedelta(days = k)).strftime('%Y-%m-%d') \
+            for k in range((dt.strptime(self.end_date, '%Y-%m-%d').date() - dt.strptime(self.start_date, '%Y-%m-%d').date()).days + 1)]
 
         dataframe = DataFrame()
         df = concat([self.domestic_stocks[['date', 'share']], self.international_stocks[['date', 'share']], self.crypto[['date', 'share']]])
@@ -318,9 +311,17 @@ class Investments():
         dataframe = dataframe.groupby(by = ['date']).sum().drop(columns = {'adjusted_close', 'close'})
         dataframe = DataFrame(dataframe).loc[(dataframe.index >= self.start_date) & (dataframe.index <= self.end_date)]
 
-        self.portfolio_time_series['portfolio'] = dataframe['portfolio'].to_list()
+        self.portfolio_time_series = DataFrame()
+        self.portfolio_time_series['date'] = dates
+        self.portfolio_time_series['portfolio'] = dataframe.portfolio.to_list()
+        self.portfolio_time_series['SPY'] = self.spy.loc[(self.spy.date >= self.start_date) & (self.spy.date <= self.end_date), 'adjusted_close'].to_list()
+        self.portfolio_time_series['BOVA11'] = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date)]['adjusted_close_dollar'].to_list()
         self.portfolio_time_series.sort_values(by = 'date', inplace = True)
         self.portfolio_time_series['return_portfolio'] = self.get_returns(self.portfolio_time_series)
+        self.portfolio_time_series['return_SPY'] = 100 * ((self.portfolio_time_series.SPY.pct_change() + 1).fillna(1).cumprod() - 1)
+        self.portfolio_time_series['return_BOVA11'] = 100 * ((self.portfolio_time_series.BOVA11.pct_change() + 1).fillna(1).cumprod() - 1)
         self.portfolio_time_series['cagr_portfolio'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
+        self.portfolio_time_series['cagr_SPY'] = [0] + [100 * ((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
+        self.portfolio_time_series['cagr_BOVA11'] = [0] + [100 * ((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
         self.portfolio_time_series.drop(columns = {'level_0', 'index'}, inplace = True)
         self.portfolio_time_series.set_index('date', inplace = True)
