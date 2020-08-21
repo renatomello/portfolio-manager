@@ -10,21 +10,14 @@ from investiments import Investments
 
 import matplotlib.pyplot as plt
 
+import yfinance as yf
+
 key = '12FCWWSQ0N28V8QV'
 
-#%%
-assets = [
-    'AMZN',
-    'ITSA4',
-    'BTCUSD',
-    'BRLGBP',
-    'USDEUR',
-]
-
-Update_Assets(key = key, asset = assets)
+Update_Assets(key = key)
 
 #%%
-investments = Investments(start_date_returns = '2020-01-02')
+investments = Investments()
 portfolio, portfolio_aggregate = investments('portfolio')
 dollar = investments('dollar')
 investments('save')
@@ -54,6 +47,28 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
+x = time_series.index[100:]
+date_plot = [x[k] for k in range(0, len(x), 11)]
+y1 = time_series.cagr_position.iloc[100:]
+y2 = time_series.cagr_SPY.iloc[100:]
+y3 = time_series.cagr_BOVA11.iloc[100:]
+
+fig, ax = plt.subplots(1, figsize = (8, 5))
+fig.tight_layout()
+ax.plot(x, y1, label = 'Portfolio')
+ax.plot(x, y2, label = 'SPY')
+ax.plot(x, y3, label = 'BOVA11 (USD)')
+
+leg = plt.legend(loc = 'upper left', frameon = False)
+for text in leg.get_texts():
+    plt.setp(text, color = 'black')
+
+ax.set_ylabel('DCF CAGR (%)')
+plt.xticks(date_plot)
+plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
+plt.show()
+
+#%%
 x = time_series.index
 date_plot = [x[k] for k in range(0, len(x), 8)]
 y1 = time_series.position
@@ -73,16 +88,16 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-vector = [4308.83]
-aux = DataFrame({
-    # 'asset': ['domestic stocks', 'domestics funds'],
-    'asset': ['domestics funds'],
-    'value_brl': vector,
-    'value_usd': [item * dollar for item in vector],
-})
-portfolio_aggregate = concat([portfolio_aggregate, aux])
-portfolio_aggregate.sort_values(by = ['value_usd'], ascending = False, inplace = True)
-portfolio_aggregate
+# vector = [4308.83]
+# aux = DataFrame({
+#     # 'asset': ['domestic stocks', 'domestics funds'],
+#     'asset': ['domestics funds'],
+#     'value_brl': vector,
+#     'value_usd': [item * dollar for item in vector],
+# })
+# portfolio_aggregate = concat([portfolio_aggregate, aux])
+# portfolio_aggregate.sort_values(by = ['value_usd'], ascending = False, inplace = True)
+# portfolio_aggregate
 
 #%%
 plt.pie(
