@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 import yfinance as yf
 
-key = '12FCWWSQ0N28V8QV'
+key = ''
 
 Update_Assets(key = key)
 
@@ -27,7 +27,7 @@ time_series
 #%%
 x = time_series.index
 date_plot = [x[k] for k in range(0, len(x), 11)]
-y1 = time_series.return_position
+y1 = time_series.return_portfolio
 y2 = time_series.return_SPY
 y3 = time_series.return_BOVA11
 
@@ -49,7 +49,7 @@ plt.show()
 #%%
 x = time_series.index
 date_plot = [x[k] for k in range(0, len(x), 11)]
-y1 = time_series.cagr_position
+y1 = time_series.cagr_portfolio
 y2 = time_series.cagr_SPY
 y3 = time_series.cagr_BOVA11
 
@@ -71,7 +71,7 @@ plt.show()
 #%%
 x = time_series.index
 date_plot = [x[k] for k in range(0, len(x), 8)]
-y1 = time_series.position
+y1 = time_series.portfolio
 y2 = time_series.SPY
 y3 = time_series.BOVA11
 
@@ -88,9 +88,8 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-# vector = [4308.83]
+# vector = [4370.00]
 # aux = DataFrame({
-#     # 'asset': ['domestic stocks', 'domestics funds'],
 #     'asset': ['domestics funds'],
 #     'value_brl': vector,
 #     'value_usd': [item * dollar for item in vector],
@@ -124,9 +123,12 @@ plt.tight_layout()
 plt.show()
 
 #%%
+portfolio.loc['domestic stocks']
+
+#%%
 plt.pie(
-    x = portfolio.loc['domestic_stocks'].value_usd, 
-    labels = portfolio.loc['domestic_stocks'].asset,
+    x = portfolio.loc['domestic stocks'].value_usd, 
+    labels = portfolio.loc['domestic stocks'].asset,
     shadow = True,
     autopct = '%1.1f%%',
     pctdistance = 0.80,
