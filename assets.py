@@ -1,4 +1,3 @@
-#%%
 from time import sleep
 from sqlite3 import connect
 
@@ -17,8 +16,6 @@ class Update_Assets():
         self.asset = self.asset_list if asset == '' else asset
         self.check_assets()
         self.get_credentials()
-        # self.update_crypto_database()
-        # self.update_fx_database()
         self.update_asset_database()
 
     def hyperparameters(self):
@@ -96,10 +93,10 @@ class Update_Assets():
         if flag == 'include':
             dataframe.to_sql(ticker, connection, if_exists = 'replace', index = False)
         if flag == 'update':
-            reference = read_sql_query('SELECT date FROM {} ORDER BY date DESC LIMIT 1'.format(ticker), connection)
+            reference = read_sql_query('SELECT date FROM "{}" ORDER BY date DESC LIMIT 1'.format(ticker), connection)
             reference = reference.values[0][0]
             cursor = connection.cursor()
-            cursor.execute("DELETE FROM {} WHERE date LIKE '%{}%'".format(ticker, reference))
+            cursor.execute("DELETE FROM '{}' WHERE date LIKE '%{}%'".format(ticker, reference))
             connection.commit()
             dataframe = dataframe.loc[dataframe.date >= reference]
             dataframe.to_sql(ticker, connection, if_exists = 'append', index = False)
@@ -113,10 +110,10 @@ class Update_Assets():
         if currency not in self.fx_list:
             df.to_sql(currency, connection, if_exists = 'replace', index = False)
         if currency in self.fx_list:
-            reference = read_sql_query('SELECT date FROM {} ORDER BY date DESC LIMIT 1'.format(currency), connection)
+            reference = read_sql_query('SELECT date FROM "{}" ORDER BY date DESC LIMIT 1'.format(currency), connection)
             reference = reference.values[0][0]
             cursor = connection.cursor()
-            cursor.execute("DELETE FROM {} WHERE date LIKE '%{}%'".format(currency, reference))
+            cursor.execute("DELETE FROM '{}' WHERE date LIKE '%{}%'".format(currency, reference))
             connection.commit()
             df = df.loc[df.date >= reference]
             df.to_sql(currency, connection, if_exists = 'append', index = False)
@@ -130,10 +127,10 @@ class Update_Assets():
         if currency not in self.crypto_list:
             df.to_sql(currency, connection, if_exists = 'replace', index = False)
         if currency in self.crypto_list:
-            reference = read_sql_query('SELECT date FROM {} ORDER BY date DESC LIMIT 1'.format(currency), connection)
+            reference = read_sql_query('SELECT date FROM "{}" ORDER BY date DESC LIMIT 1'.format(currency), connection)
             reference = reference.values[0][0]
             cursor = connection.cursor()
-            cursor.execute("DELETE FROM {} WHERE date LIKE '%{}%'".format(currency, reference))
+            cursor.execute("DELETE FROM '{}' WHERE date LIKE '%{}%'".format(currency, reference))
             connection.commit()
             df = df.loc[df.date >= reference]
             df.to_sql(currency, connection, if_exists = 'append', index = False)
@@ -167,7 +164,7 @@ class Update_Assets():
         print('Updating database...')
         for count, ticker in enumerate(self.asset):
             if (count % 2 == 0) and (count != 0):
-                sleep(60.0)
+                sleep(30.0)
             currency_from, currency_to = ticker[:3], ticker[3:]
             if (currency_from in self.currencies.currency_code.to_list()) & (currency_to in self.currencies.currency_code.to_list()):
                 self.update_fx_database(currency_from = currency_from, currency_to = currency_to)
