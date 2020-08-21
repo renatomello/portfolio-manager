@@ -47,11 +47,11 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-x = time_series.index[100:]
+x = time_series.index
 date_plot = [x[k] for k in range(0, len(x), 11)]
-y1 = time_series.cagr_position.iloc[100:]
-y2 = time_series.cagr_SPY.iloc[100:]
-y3 = time_series.cagr_BOVA11.iloc[100:]
+y1 = time_series.cagr_position
+y2 = time_series.cagr_SPY
+y3 = time_series.cagr_BOVA11
 
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
