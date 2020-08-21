@@ -248,7 +248,14 @@ class Investments():
             returns = list(map(lambda x: x + 1, returns))
             returns = 100 * (cumprod(returns) - 1)
         if flag == 'cagr':
-            returns = [0] + [(df.position.iloc[k] / df.position.iloc[0]) ** (365 / k) - 1 for k in range(1, len(df))]
+            for date in df['date'].iloc[1:]:
+                end = df.loc[df.date == date, 'position'].index[0]
+                start = df.index[0] - 1
+                exponent = 365 / (end - start)
+                cash_flow = reference.loc[reference.date <= date, 'purchase_price'].sum()
+                retorno = (df.position.iloc[end] / (df.position.iloc[start] + cash_flow)) ** exponent - 1
+                returns.append(retorno)
+            returns = [0] + returns
         return returns
 
     def get_start_date(self):
@@ -284,8 +291,8 @@ class Investments():
         self.portfolio_time_series['BOVA11'] = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date)]['adjusted_close_dollar'].to_list()
         self.portfolio_time_series['return_SPY'] = 100 * ((self.portfolio_time_series.SPY.pct_change() + 1).fillna(1).cumprod() - 1)
         self.portfolio_time_series['return_BOVA11'] = 100 * ((self.portfolio_time_series.BOVA11.pct_change() + 1).fillna(1).cumprod() - 1)
-        self.portfolio_time_series['cagr_SPY'] = [0] + [((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
-        self.portfolio_time_series['cagr_BOVA11'] = [0] + [((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
+        # self.portfolio_time_series['cagr_SPY'] = [0] + [((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
+        # self.portfolio_time_series['cagr_BOVA11'] = [0] + [((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
 
         dataframe = DataFrame()
         df = concat([self.domestic_stocks[['date', 'share']], self.international_stocks[['date', 'share']], self.crypto[['date', 'share']]])
@@ -312,6 +319,7 @@ class Investments():
 
         self.portfolio_time_series['position'] = dataframe['position'].to_list()
         self.portfolio_time_series['return_position'] = self.get_returns(self.portfolio_time_series)
-        self.portfolio_time_series['cagr_position'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
-        self.portfolio_time_series.drop(columns = {'level_0', 'index'}, inplace = True)
+        # self.portfolio_time_series['cagr_position'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
+        # self.portfolio_time_series.drop(columns = {'level_0', 'index'}, inplace = True)
+        self.portfolio_time_series.drop(columns = {'index'}, inplace = True)
         self.portfolio_time_series.set_index('date', inplace = True)
