@@ -49,16 +49,25 @@ class Investments():
 
     def hyperparameters(self):
         self.database = self.kwargs.get('database', 'database.db')
-        self.bonds_path, self.crypto_path = self.path + 'bonds/', self.path + 'crypto/'
-        self.domestic_stocks_path = self.path + 'stocks/domestic'
-        self.international_stocks_path = self.path + 'stocks/international/'
-        self.list_paths = [self.bonds_path, self.crypto_path, self.domestic_stocks_path, self.international_stocks_path]
+        self.options_database = self.kwargs.get('options_database', 'options.db')
+        self.bonds_path = '{}bonds/'.format(self.path)
+        self.crypto_path = '{}crypto/'.format(self.path)
+        self.domestic_stocks_path = '{}stocks/domestic/'.format(self.path)
+        self.international_stocks_path = '{}stocks/international/'.format(self.path)
+        self.domestic_options_path = '{}options/domestic/'.format(self.path)
+        self.list_paths = [
+            self.bonds_path, 
+            self.crypto_path, 
+            self.domestic_stocks_path, 
+            self.international_stocks_path, 
+            self.domestic_options_path,
+        ]
 
     def get_dollar(self):
         currency = 'BRLUSD'
         connection = connect('database.db')
-        self.dollar = read_sql_query('SELECT * FROM {}'.format(currency), connection).iloc[0].close
-        self.dollar_full = read_sql_query('SELECT date, close as adjusted_close FROM {} ORDER BY date'.format(currency), connection)
+        self.dollar = read_sql_query('SELECT * FROM "{}"'.format(currency), connection).iloc[0].close
+        self.dollar_full = read_sql_query('SELECT date, close as adjusted_close FROM "{}" ORDER BY date'.format(currency), connection)
         connection.close()
         self.dollar_full = self.insert_weekends(self.dollar_full)
 
@@ -95,6 +104,7 @@ class Investments():
     def get_all_assets(self):
         self.interests, self.fractions = list(), list()
         self.domestic_tickers, self.international_tickers = list(), list()
+        self.domestic_options_tickers = list()
         for directory in self.list_paths:
             list_files = list()
             for filename in listdir(directory):
@@ -102,12 +112,14 @@ class Investments():
                     list_files.append(path.join(directory, filename))
                     if directory == self.bonds_path:
                         self.interests.append(filename.replace('.csv', '').upper())
+                    if directory == self.crypto_path:
+                        self.fractions.append(filename.replace('.csv', '').upper())
                     if directory == self.domestic_stocks_path:
                         self.domestic_tickers.append(filename.replace('.csv', '').upper())
                     if directory == self.international_stocks_path:
                         self.international_tickers.append(filename.replace('.csv', '').upper())
-                    if directory == self.crypto_path:
-                        self.fractions.append(filename.replace('.csv', '').upper())
+                    if directory == self.domestic_options_path:
+                        self.domestic_options_tickers.append(filename.replace('.csv', '').upper())
             dictionary = dict()
             if directory == self.bonds_path:
                 for filename, interest in zip(list_files, self.interests):
@@ -115,15 +127,17 @@ class Investments():
                     dictionary[interest] = df
                 self.bonds = concat(dictionary)
             else:
+                if directory == self.crypto_path:
+                    symbols = self.fractions
                 if directory == self.domestic_stocks_path:
                     symbols = self.domestic_tickers
                 if directory == self.international_stocks_path:
                     symbols = self.international_tickers
-                if directory == self.crypto_path:
-                    symbols = self.fractions
+                if directory == self.domestic_options_path:
+                    symbols = self.domestic_options_tickers
                 for filename, ticker in zip(list_files, symbols):
                     df = read_csv(filename)
-                    if ticker in self.domestic_tickers:
+                    if (ticker in self.domestic_tickers) or (ticker in self.domestic_options_tickers):
                         price_dollar = list()
                         for price, data in zip(df.purchase_price, df.date):
                             price_dollar.append(price * self.dollar_full.loc[self.dollar_full.date == data, 'adjusted_close'].iloc[0])
@@ -133,42 +147,55 @@ class Investments():
                     df['cum_price_share'] = df.price_share.expanding().mean().round(2)
                     dictionary[ticker] = df
                 self.stocks = concat(dictionary)
+                if directory == self.crypto_path:
+                    self.crypto = concat(dictionary)
                 if directory == self.domestic_stocks_path:
                     self.domestic_stocks = concat(dictionary)
                 if directory == self.international_stocks_path:
                     self.international_stocks = concat(dictionary)
-                if directory == self.crypto_path:
-                    self.crypto = concat(dictionary)
+                if directory == self.domestic_options_path:
+                    self.domestic_options = concat(dictionary)
 
     def get_quotas(self, asset):
         quotas = dict()
         domestic = False
+        if asset == 'crypto':
+            list_tickers = self.fractions
         if asset == 'domestic_stocks':
             list_tickers  = self.domestic_tickers
             domestic = True
         if asset == 'international_stocks':
             list_tickers  = self.international_tickers
-        if asset == 'crypto':
-            list_tickers = self.fractions
+        if asset == 'domestic_options':
+            list_tickers = self.domestic_options_tickers
         for ticker in list_tickers:
             key = ticker.upper()
+            if asset == 'crypto':
+                quotas[key] = self.crypto.loc[ticker].cum_share.iloc[-1]
             if asset == 'domestic_stocks':
                 quotas[key] = self.domestic_stocks.loc[ticker].cum_share.iloc[-1]
             if asset == 'international_stocks':
                 quotas[key] = self.international_stocks.loc[ticker].cum_share.iloc[-1]
-            if asset == 'crypto':
-                quotas[key] = self.crypto.loc[ticker].cum_share.iloc[-1]
+            if asset == 'domestic_options':
+                quotas[key] = self.domestic_options[ticker].cum_share.iloc[-1]
         portfolio = DataFrame({
             'asset': list(quotas.keys()),
             'quotas': list(quotas.values())
         })
         value_usd, value_brl = list(), list()
-        connection = connect('database.db')
         for asset in list(quotas.keys()):
             if asset in self.fractions:
-                close_price = read_sql_query("SELECT close FROM {} ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
+                connection = connect(self.database)
+                close_price = read_sql_query("SELECT close FROM '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
+                connection.close()
+            elif asset in self.domestic_options_tickers:
+                connection = connect(self.options_database)
+                close_price = read_sql_query("SELECT close FROM '{}' ORDER BY date DESC LIMIT 1".format(), connection)
+                connection.close()
             else:
-                close_price = read_sql_query("SELECT adjusted_close FROM {} ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
+                connection = connect(self.database)
+                close_price = read_sql_query("SELECT adjusted_close FROM '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
+                connection.close()
             if domestic == False:
                 value_usd.append(close_price * quotas.get(asset))
                 value_brl.append(close_price * quotas.get(asset) / self.dollar)
