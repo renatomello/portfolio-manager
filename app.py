@@ -10,12 +10,13 @@ from investiments import Investments
 
 import matplotlib.pyplot as plt
 
-key = ''
+key = '12FCWWSQ0N28V8QV'
 
 Update_Assets(key = key)
 
 #%%
-investments = Investments()
+database = '/home/renato/Dropbox/Data Science/portfolio-manager/options.db'
+investments = Investments(start_date_returns = '2020-03-22')
 portfolio, portfolio_aggregate = investments('portfolio')
 dollar = investments('dollar')
 investments('save')
@@ -45,11 +46,11 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-x = time_series.index
+x = time_series.index[100:]
 date_plot = [x[k] for k in range(0, len(x), 11)]
-y1 = time_series.cagr_portfolio
-y2 = time_series.cagr_SPY
-y3 = time_series.cagr_BOVA11
+y1 = time_series.cagr_portfolio.iloc[100:]
+y2 = time_series.cagr_SPY.iloc[100:]
+y3 = time_series.cagr_BOVA11.iloc[100:]
 
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
@@ -68,7 +69,7 @@ plt.show()
 
 #%%
 x = time_series.index
-date_plot = [x[k] for k in range(0, len(x), 8)]
+date_plot = [x[k] for k in range(0, len(x), 15)]
 y1 = time_series.portfolio
 y2 = time_series.SPY
 y3 = time_series.BOVA11
@@ -86,15 +87,15 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-# vector = [4370.00]
-# aux = DataFrame({
-#     'asset': ['domestics funds'],
-#     'value_brl': vector,
-#     'value_usd': [item * dollar for item in vector],
-# })
-# portfolio_aggregate = concat([portfolio_aggregate, aux])
-# portfolio_aggregate.sort_values(by = ['value_usd'], ascending = False, inplace = True)
-# portfolio_aggregate
+vector = [4370.00]
+aux = DataFrame({
+    'asset': ['domestics funds'],
+    'value_brl': vector,
+    'value_usd': [item * dollar for item in vector],
+})
+portfolio_aggregate = concat([portfolio_aggregate, aux])
+portfolio_aggregate.sort_values(by = ['value_usd'], ascending = False, inplace = True)
+portfolio_aggregate
 
 #%%
 plt.pie(
@@ -119,9 +120,6 @@ plt.pie(
     )
 plt.tight_layout()
 plt.show()
-
-#%%
-portfolio.loc['domestic stocks']
 
 #%%
 plt.pie(

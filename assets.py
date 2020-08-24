@@ -163,7 +163,7 @@ class Update_Assets():
     def update_asset_database(self):
         print('Updating database...')
         for count, ticker in enumerate(self.asset):
-            if (count % 2 == 0) and (count != 0):
+            if (count % 2 == 0) and (count != 0) and (count != len(self.asset) - 1):
                 sleep(30.0)
             currency_from, currency_to = ticker[:3], ticker[3:]
             if (currency_from in self.currencies.currency_code.to_list()) & (currency_to in self.currencies.currency_code.to_list()):
