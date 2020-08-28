@@ -6,3 +6,5 @@ dash
 dash-bootstrap-components
 flask
 flask-restful
+psycopg2
+sqlalchemy
