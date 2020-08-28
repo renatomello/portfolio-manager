@@ -1,4 +1,5 @@
 #%%
+from sys import stdout
 from time import sleep
 from datetime import datetime as dt
 from sqlite3 import connect
@@ -7,21 +8,40 @@ from pandas import DataFrame, read_sql_query, concat
 
 from assets import Update_Assets
 from investiments import Investments
+from functions import psqlEngine
 
 import matplotlib.pyplot as plt
 
-key = '12FCWWSQ0N28V8QV'
-
-Update_Assets(key = key)
+filename = 'database.ini'
+key = ''
 
 #%%
-database = '/home/renato/Dropbox/Data Science/portfolio-manager/options.db'
-investments = Investments(start_date_returns = '2020-03-22')
+# Update_Assets(key = key, database = 'international.db')
+
+# connection = connect('database.db')
+# tickers = read_sql_query("SELECT name FROM sqlite_master WHERE type='table';", connection).name.to_list()
+# connection.close()
+
+# for ticker in tickers:
+#     stdout.write('\r\x1b[K' + ticker)
+#     stdout.flush()
+#     connection = connect('database.db')
+#     df = read_sql_query('SELECT * FROM "{}" ORDER BY date'.format(ticker), connection)
+#     connection.close()
+
+#     engine = psqlEngine(filename = filename)
+#     connection = engine.connect()
+#     df.to_sql(ticker, connection, if_exists = 'replace', index = False)
+#     connection.close()
+#     engine.dispose()
+
+#%%
+investments = Investments(start_date = '2020-01-01')
 portfolio, portfolio_aggregate = investments('portfolio')
 dollar = investments('dollar')
-investments('save')
+# investments('save')
 time_series = investments('time_series')
-time_series
+# time_series
 
 #%%
 x = time_series.index
@@ -46,11 +66,12 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-x = time_series.index[100:]
+start = 180
+x = time_series.index[-start:]
 date_plot = [x[k] for k in range(0, len(x), 11)]
-y1 = time_series.cagr_portfolio.iloc[100:]
-y2 = time_series.cagr_SPY.iloc[100:]
-y3 = time_series.cagr_BOVA11.iloc[100:]
+y1 = time_series.cagr_portfolio.iloc[-start:]
+y2 = time_series.cagr_SPY.iloc[-start:]
+y3 = time_series.cagr_BOVA11.iloc[-start:]
 
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
@@ -71,12 +92,12 @@ plt.show()
 x = time_series.index
 date_plot = [x[k] for k in range(0, len(x), 15)]
 y1 = time_series.portfolio
-y2 = time_series.SPY
-y3 = time_series.BOVA11
+y2 = time_series.portfolio_invested
 
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
-ax.plot(x, y1, label = 'Portfolio')
+ax.plot(x, y2, label = 'Invested', color = 'black')
+ax.fill_between(x, y1, label = 'Portfolio', alpha = 0.6)
 
 leg = plt.legend(loc = 'upper left', frameon = False)
 for text in leg.get_texts():
@@ -87,7 +108,7 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-vector = [4370.00]
+vector = []
 aux = DataFrame({
     'asset': ['domestics funds'],
     'value_brl': vector,
