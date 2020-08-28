@@ -1,11 +1,14 @@
 from os import path, listdir
 from time import sleep
 from sqlite3 import connect
-from datetime import date, timedelta
+from datetime import timedelta
+from datetime import date as dt_date
 from datetime import datetime as dt
 
 from numpy import cumprod
 from pandas import DataFrame, read_sql_query, read_csv, concat
+
+from functions import psqlEngine
 
 class Investments():
     def __init__(self, path = 'investments/', name = 'get_investments', **kwargs):
@@ -31,7 +34,7 @@ class Investments():
         if flag == 'dollar':
             return self.dollar
         if flag == 'bonds':
-            return self.bonds, self.interests
+            return self.domestic_bonds, self.interests
         if flag == 'stocks':
             return self.domestic_tickers, self.international_tickers
         if flag == 'crypto':
@@ -41,23 +44,27 @@ class Investments():
         if flag == 'save':
             rounded = self.portfolio.round(2)
             rounded2 = self.portfolio_aggregate.round(2)
-            connection = connect('database.db')
+            engine = psqlEngine(self.database)
+            connection = engine.connect()
             rounded.to_sql('portfolio', connection, if_exists = 'replace', index = False)
             rounded2.to_sql('aggregate', connection, if_exists = 'replace', index = False)
             connection.close()
+            engine.dispose()
         if flag == 'time_series':
-            return self.portfolio_time_series
+            return self.portfolio_time_series.round(2)
 
     def hyperparameters(self):
-        self.database = self.kwargs.get('database', 'database.db')
-        self.options_database = self.kwargs.get('options_database', 'options.db')
-        self.bonds_path = '{}bonds/'.format(self.path)
+        self.database = self.kwargs.get('database', 'database.ini')
+        self.international_database = self.kwargs.get('international_database', 'international.db')
+        self.portfolio_database = self.kwargs.get('portfolio_database', 'portfolio.db')
+        self.currency_database = self.kwargs.get('currency_database', 'currency.db')
+        self.domestic_bonds_path = '{}bonds/'.format(self.path)
         self.crypto_path = '{}crypto/'.format(self.path)
         self.domestic_stocks_path = '{}stocks/domestic/'.format(self.path)
         self.international_stocks_path = '{}stocks/international/'.format(self.path)
         self.domestic_options_path = '{}options/domestic/'.format(self.path)
         self.list_paths = [
-            self.bonds_path, 
+            self.domestic_bonds_path, 
             self.crypto_path, 
             self.domestic_stocks_path, 
             self.international_stocks_path, 
@@ -66,40 +73,44 @@ class Investments():
 
     def get_dollar(self):
         currency = 'BRLUSD'
-        connection = connect('database.db')
+        connection = connect(self.currency_database)
         self.dollar = read_sql_query('SELECT * FROM "{}"'.format(currency), connection).iloc[0].close
-        self.dollar_full = read_sql_query('SELECT date, close as adjusted_close FROM "{}" ORDER BY date'.format(currency), connection)
+        self.dollar_full = read_sql_query('SELECT date, close FROM "{}" ORDER BY date'.format(currency), connection)
         connection.close()
         self.dollar_full = self.insert_weekends(self.dollar_full)
 
     def get_benchmarks(self):
-        connection = connect('database.db')
-        self.spy = read_sql_query('SELECT date, adjusted_close FROM SPY ORDER BY date', connection)
-        self.bova = read_sql_query('SELECT date, adjusted_close FROM BOVA11 ORDER BY date', connection)
+        connection = connect(self.international_database)
+        self.spy = read_sql_query('SELECT date, adjusted_close as close FROM SPY ORDER BY date', connection)
         connection.close()
+        engine = psqlEngine(self.database)
+        connection = engine.connect()
+        self.bova = read_sql_query("SELECT date, close FROM complete WHERE ticker = 'BOVA11' ORDER BY date", connection)
+        connection.close()
+        engine.dispose()
         self.spy = self.insert_weekends(self.spy)
         self.bova = self.insert_weekends(self.bova)
         self.bova = self.bova.loc[(self.bova.date >= self.dollar_full.date.iloc[0]) & (self.bova.date <= self.dollar_full.date.iloc[-1])]
-        self.bova['adjusted_close_dollar'] = [x*y for x, y in zip(self.bova.adjusted_close.to_list(), self.dollar_full.adjusted_close.to_list())]
+        self.bova['close_dollar'] = [x*y for x, y in zip(self.bova.close.to_list(), self.dollar_full.close.to_list())]
 
     def domestic_bond_returns(self):
-        end = dt.strptime(date.today().strftime('%Y-%m-%d'), '%Y-%m-%d')
-        cdi = read_csv('interests/cdi.csv')
-        cdi['date'] = [dt.strptime(data, '%d/%m/%Y') for data in cdi.data]
-        self.total_returns_brl = 0
-        for k in range(len(self.bonds)):
-            start = dt.strptime(self.bonds.date[k], '%Y-%m-%d')
-            cut = cdi.loc[(cdi.date >= start) & (cdi.date <= end)][1:]
-            value = self.bonds.price[k]
-            for interest in cut.valor:
-                value = value * (1 + interest * self.bonds.pct_cdi[k] / 100)
-            self.total_returns_brl += value
-        self.total_returns_usd = self.total_returns_brl * self.dollar
+        end = dt_date.today().strftime('%Y-%m-%d')
+        self.cdi = read_csv('interests/cdi.csv')
+        self.cdi['date'] = [dt.strptime(date, '%d/%m/%Y').strftime('%Y-%m-%d') for date in self.cdi.date]
+        self.cdi['interest'] = [1 + interest / 100 for interest in self.cdi.cdi]
+        total_returns_brl = 0
+        for date, purchase_price, share in zip(self.domestic_bonds.date, self.domestic_bonds.purchase_price, self.domestic_bonds.share):
+            cdi = self.cdi.loc[(self.cdi.date >= date) & (self.cdi.date <= end)]
+            value = purchase_price
+            for interest in cdi.interest:
+                value = value * (interest * share)
+            total_returns_brl += value
+        total_returns_usd = total_returns_brl * self.dollar
         self.portfolio_bonds = DataFrame({
             'asset': ['domestic bonds'],
             'quotas': [1],
-            'value_usd': [self.total_returns_usd],
-            'value_brl': [self.total_returns_brl],
+            'value_usd': [total_returns_usd],
+            'value_brl': [total_returns_brl],
         })
 
     def get_all_assets(self):
@@ -111,7 +122,7 @@ class Investments():
             for filename in listdir(directory):
                 if filename.endswith('.csv'):
                     list_files.append(path.join(directory, filename))
-                    if directory == self.bonds_path:
+                    if directory == self.domestic_bonds_path:
                         self.interests.append(filename.replace('.csv', '').upper())
                     if directory == self.crypto_path:
                         self.fractions.append(filename.replace('.csv', '').upper())
@@ -122,11 +133,13 @@ class Investments():
                     if directory == self.domestic_options_path:
                         self.domestic_options_tickers.append(filename.replace('.csv', '').upper())
             dictionary = dict()
-            if directory == self.bonds_path:
+            if directory == self.domestic_bonds_path:
                 for filename, interest in zip(list_files, self.interests):
                     df = read_csv(filename)
                     dictionary[interest] = df
-                self.bonds = concat(dictionary)
+                self.domestic_bonds = concat(dictionary)
+                self.domestic_bonds = self.domestic_bonds.rename(columns = {'pct_cdi': 'share'})
+                self.domestic_bonds['purchase_price_dollar'] = [price * self.dollar_full.loc[self.dollar_full.date == date, 'close'].iloc[0] for date, price in zip(self.domestic_bonds.date, self.domestic_bonds.purchase_price) ]
             else:
                 if directory == self.crypto_path:
                     symbols = self.fractions
@@ -141,11 +154,11 @@ class Investments():
                     if (ticker in self.domestic_tickers) or (ticker in self.domestic_options_tickers):
                         price_dollar = list()
                         for price, data in zip(df.purchase_price, df.date):
-                            price_dollar.append(price * self.dollar_full.loc[self.dollar_full.date == data, 'adjusted_close'].iloc[0])
+                            price_dollar.append(price * self.dollar_full.loc[self.dollar_full.date == data, 'close'].iloc[0])
                         df['purchase_price'] = price_dollar
                     df['cum_share'] = df.share.cumsum()
-                    df['price_share'] = (df.purchase_price / df.share).round(2)
-                    df['cum_price_share'] = df.price_share.expanding().mean().round(2)
+                    df['price_share'] = (df.purchase_price / df.share)
+                    df['cum_price_share'] = df.price_share.expanding().mean()
                     dictionary[ticker] = df
                 self.stocks = concat(dictionary)
                 if directory == self.crypto_path:
@@ -187,16 +200,18 @@ class Investments():
         value_usd, value_brl = list(), list()
         for asset in list(quotas.keys()):
             if asset in self.fractions:
-                connection = connect(self.database)
+                connection = connect(self.currency_database)
                 close_price = read_sql_query("SELECT close FROM '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
                 connection.close()
-            elif asset in self.domestic_options_tickers:
-                connection = connect(self.options_database)
-                close_price = read_sql_query("SELECT close FROM '{}' ORDER BY date DESC LIMIT 1".format(asset), connection)
+            elif (asset in self.domestic_options_tickers) or (asset in self.domestic_tickers):
+                engine = psqlEngine(self.database)
+                connection = engine.connect()
+                close_price = read_sql_query("SELECT close FROM complete WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
                 connection.close()
+                engine.dispose()
             else:
-                connection = connect(self.database)
-                close_price = read_sql_query("SELECT adjusted_close FROM '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
+                connection = connect(self.international_database)
+                close_price = read_sql_query("SELECT adjusted_close as close FROM '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
                 connection.close()
             if domestic == False:
                 value_usd.append(close_price * quotas.get(asset))
@@ -204,7 +219,6 @@ class Investments():
             if domestic == True:
                 value_usd.append(close_price * quotas.get(asset) * self.dollar)
                 value_brl.append(close_price * quotas.get(asset))
-        connection.close()
         portfolio['value_usd'] = value_usd
         portfolio['value_brl'] = value_brl
         portfolio.sort_values(by = ['value_usd'], ascending = False, inplace = True)
@@ -233,7 +247,7 @@ class Investments():
             'value_usd': value_usd,
         })
 
-    def insert_weekends(self, df, crypto = False):
+    def insert_weekends(self, df, asset = 'stock'):
         df.set_index('date', inplace = True)
         start, end = df.index[0], df.index[-1]
         start = dt.strptime(start, '%Y-%m-%d').date()
@@ -241,29 +255,72 @@ class Investments():
         dates = [str(start + timedelta(days = x)) for x in range(0, (end - start).days + 1, 1)]
         df = df.reindex(dates, fill_value = 0)
         df.reset_index(inplace = True)
-        adjusted_close = list()
-        if crypto == True:
+        close = list()
+        if asset == 'bond':
+            for value in df.portfolio:
+                if value != 0:
+                    close.append(value)
+                if value == 0:
+                    close.append(close[-1])
+            df['portfolio'] = close
+        if asset == 'crypto':
             for value in df.close:
                 if value != 0:
-                    adjusted_close.append(value)
+                    close.append(value)
                 if value == 0:
-                    adjusted_close.append(adjusted_close[-1])
-            df.close = adjusted_close
-        if crypto == False:
-            for value in df.adjusted_close:
+                    close.append(close[-1])
+            df['close'] = close
+        if asset == 'stock':
+            for value in df.close:
                 if value != 0:
-                    adjusted_close.append(value)
+                    close.append(value)
                 if value == 0:
-                    adjusted_close.append(adjusted_close[-1])
-            df.adjusted_close = adjusted_close
+                    close.append(close[-1])
+            df['close'] = close
         return df
     
     def get_concat_dataframe(self, columns, options = True):
+        columns_bonds = list()
+        for elem in columns:
+            if elem == 'share':
+                columns_bonds.append('purchase_price')
+            elif elem == 'purchase_price':
+                columns_bonds.append('purchase_price_dollar')
+            else:
+                columns_bonds.append(elem)
+        domestic_bonds = self.domestic_bonds[columns_bonds].rename(columns = {'purchase_price_dollar': 'purchase_price'})
         if options == True:
-            df = concat([self.domestic_stocks[columns], self.international_stocks[columns], self.crypto[columns], self.domestic_options[columns]])
+            df = concat([domestic_bonds, self.domestic_stocks[columns], self.international_stocks[columns], self.crypto[columns], self.domestic_options[columns]])
         if options == False:
-            df = concat([self.domestic_stocks[columns], self.international_stocks[columns], self.crypto[columns]])
+            df = concat([domestic_bonds, self.domestic_stocks[columns], self.international_stocks[columns], self.crypto[columns]])
         return df
+    
+    def get_portfolio_invested(self, df):
+        df.set_index('date', inplace = True)
+        start, end = df.index[0], df.index[-1]
+        start = dt.strptime(start, '%Y-%m-%d').date()
+        end = dt.strptime(end, '%Y-%m-%d').date()
+
+        reference = self.get_concat_dataframe(['date', 'purchase_price'])
+        reference = reference.groupby(by = 'date')['purchase_price'].sum()
+        reference = DataFrame(reference).reset_index()
+        reference['close'] = reference.purchase_price.cumsum()
+        reference = reference.loc[(reference.date >= start.strftime('%Y-%m-%d')) & (reference.date <= end.strftime('%Y-%m-%d'))]
+        reference = self.insert_weekends(reference)
+        reference = reference.drop(columns = {'purchase_price'}).rename(columns = {'close': 'invested'})
+
+        ref_start = dt.strptime(reference.date.iloc[0], '%Y-%m-%d').date()
+        ref_end = dt.strptime(reference.date.iloc[-1], '%Y-%m-%d').date()
+        dates_beginning = [str(start + timedelta(days = x)) for x in range(0, (ref_start - start).days, 1)]
+        dates_end = [str(ref_end + timedelta(days = x)) for x in range(1, (end - ref_end).days + 1, 1)]
+
+        aux = [reference.invested.iloc[0] for _ in range(len(dates_beginning))]
+        aux2 = [reference.invested.iloc[-1] for _ in range(len(dates_end))]
+        reference = DataFrame({
+            'date': dates_beginning + reference.date.to_list() + dates_end,
+            'invested': aux + reference.invested.to_list() + aux2,
+        })
+        return reference.invested.to_list()
 
     def get_returns(self, df, flag = 'cumulative'):
         reference = self.get_concat_dataframe(['date', 'purchase_price'])
@@ -302,7 +359,7 @@ class Investments():
         start_crypto = self.crypto[['date']].sort_values(by = 'date').iloc[0].values[0]
         start_domestic_options = self.domestic_options[['date']].sort_values(by = 'date').iloc[0].values[0]
         start_date = min(start_domestic, start_international, start_crypto, start_domestic_options)
-        self.start_date = self.kwargs.get('start_date_returns', start_date)
+        self.start_date = self.kwargs.get('start_date', start_date)
         self.start_date = dt.strptime(self.start_date, '%Y-%m-%d').strftime('%Y-%m-%d')
     
     def get_end_date(self):
@@ -312,15 +369,25 @@ class Investments():
         quotes = df.index.unique(level = 0).to_list()
         dates = [end_spy, end_bova]
         for quote in quotes:
-            if quote in self.domestic_options_tickers:
-                connection = connect(self.options_database)
+            if quote in self.international_tickers:
+                connection = connect(self.international_database)
+                date = read_sql_query('SELECT date FROM "{}" ORDER BY date'.format(quote), connection).iloc[-1].values[0]
+                connection.close()
+            elif quote in self.fractions:
+                connection = connect(self.currency_database)
+                date = read_sql_query('SELECT date FROM "{}" ORDER BY date'.format(quote), connection).iloc[-1].values[0]
+                connection.close()
+            elif quote in self.interests:
+                date = self.cdi.date.iloc[-1]
             else:
-                connection = connect(self.database)
-            date = read_sql_query('SELECT date FROM "{}" ORDER BY date'.format(quote), connection).iloc[-1].values[0]
+                engine = psqlEngine(self.database)
+                connection = engine.connect()
+                date = read_sql_query("SELECT date FROM complete WHERE ticker = '{}' ORDER BY date".format(quote), connection).iloc[-1].values[0]
+                connection.close()
+                engine.dispose()
             dates.append(date)
-            connection.close()
         end_date = min(dates)
-        self.end_date = self.kwargs.get('end_date_returns', end_date)
+        self.end_date = self.kwargs.get('end_date', end_date)
         self.end_date = dt.strptime(self.end_date, '%Y-%m-%d').strftime('%Y-%m-%d')
 
     def get_time_series(self):
@@ -333,35 +400,56 @@ class Investments():
         df = self.get_concat_dataframe(['date', 'share'])
         quotes = df.index.unique(level = 0).to_list()
         for quote in quotes:
-            connection = connect(self.database)
-            if quote in self.fractions:
-                connection = connect(self.database)
-                prices = read_sql_query("SELECT date, close FROM '{}' ORDER BY date".format(quote), connection)
-                prices = self.insert_weekends(prices, crypto = True)
-            elif quote in self.domestic_options_tickers:
-                connection = connect(self.options_database)
-                prices = read_sql_query("SELECT date, close FROM '{}' ORDER BY date".format(quote), connection)
+            if quote in self.interests:
+                for data, value in zip(df.loc[quote].date, df.loc[quote].purchase_price):
+                    interests = self.cdi.loc[self.cdi.date >= data, ['date', 'interest']]
+                    lista = [value * interests.interest.iloc[0]]
+                    for interest in interests.interest.iloc[1:]:
+                        lista.append(lista[-1] * interest)
+                    interests['portfolio'] = lista
+                    lista = list()
+                    for date, price in zip(interests.date, interests.portfolio):
+                        conversion = self.dollar_full.loc[self.dollar_full.date ==  date, 'close'].iloc[0]
+                        lista.append(price * conversion)
+                    interests['portfolio'] = lista
+                    interests.drop(columns = {'interest'}, inplace = True)
+                    interests = self.insert_weekends(interests, asset = 'bond')
+                    dataframe = concat([dataframe, interests])
             else:
-                connection = connect(self.database)
-                prices = read_sql_query("SELECT date, adjusted_close FROM '{}' ORDER BY date".format(quote), connection)
-                prices = self.insert_weekends(prices)
-            connection.close()
-            for data, share in zip(df.loc[quote].date, df.loc[quote].share):
-                close_price = prices.loc[prices.date >=  data]
-                conversion = self.dollar_full.loc[self.dollar_full.date == data, 'adjusted_close'].iloc[0] if (quote in self.domestic_tickers) or (quote in self.domestic_options_tickers) else 1.
-                if (quote in self.fractions) or (quote in self.domestic_options_tickers):
-                    close_price['portfolio'] = [price * share * conversion for price in close_price.close]
+                if quote in self.fractions:
+                    connection = connect(self.currency_database)
+                    prices = read_sql_query("SELECT date, close FROM '{}' ORDER BY date".format(quote), connection)
+                    connection.close()
+                    prices = self.insert_weekends(prices, asset = 'crypto')
+                elif quote in self.international_tickers:
+                    connection = connect(self.international_database)
+                    prices = read_sql_query("SELECT date, adjusted_close as close FROM '{}' ORDER BY date".format(quote), connection)
+                    connection.close()
+                    prices = self.insert_weekends(prices)
                 else:
-                    close_price['portfolio'] = [price * share * conversion for price in close_price.adjusted_close]
-                dataframe = concat([dataframe, close_price])
-        dataframe = dataframe.groupby(by = ['date']).sum().drop(columns = {'adjusted_close', 'close'})
+                    engine = psqlEngine(self.database)
+                    connection = engine.connect()
+                    prices = read_sql_query("SELECT date, close FROM complete WHERE ticker = '{}' ORDER BY date".format(quote), connection).drop_duplicates('date')
+                    connection.close()
+                    engine.dispose()
+                    prices = self.insert_weekends(prices)
+                    lista = list()
+                    for date, price in zip(prices.date, prices.close):
+                        conversion = self.dollar_full.loc[self.dollar_full.date ==  date, 'close']
+                        lista.append(price * conversion)
+                    prices['close'] = lista
+                for data, share in zip(df.loc[quote].date, df.loc[quote].share):
+                    close_price = prices.loc[prices.date >=  data]
+                    close_price['portfolio'] = [price * share for price in close_price.close]
+                    dataframe = concat([dataframe, close_price])
+        dataframe = dataframe.groupby(by = ['date']).sum().drop(columns = {'close'})
         dataframe = DataFrame(dataframe).loc[(dataframe.index >= self.start_date) & (dataframe.index <= self.end_date)]
-
         self.portfolio_time_series = DataFrame()
         self.portfolio_time_series['date'] = dates
         self.portfolio_time_series['portfolio'] = dataframe.portfolio.to_list()
-        self.portfolio_time_series['SPY'] = self.spy.loc[(self.spy.date >= self.start_date) & (self.spy.date <= self.end_date), 'adjusted_close'].to_list()
-        self.portfolio_time_series['BOVA11'] = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date)]['adjusted_close_dollar'].to_list()
+        self.portfolio_time_series['portfolio_invested'] = self.get_portfolio_invested(self.portfolio_time_series)
+        self.portfolio_time_series['SPY'] = self.spy.loc[(self.spy.date >= self.start_date) & (self.spy.date <= self.end_date), 'close'].to_list()
+        self.portfolio_time_series['BOVA11'] = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date)]['close_dollar'].to_list()
         self.portfolio_time_series.sort_values(by = 'date', inplace = True)
         self.portfolio_time_series['return_portfolio'] = self.get_returns(self.portfolio_time_series)
         self.portfolio_time_series['return_SPY'] = 100 * ((self.portfolio_time_series.SPY.pct_change() + 1).fillna(1).cumprod() - 1)
@@ -369,5 +457,5 @@ class Investments():
         self.portfolio_time_series['cagr_portfolio'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
         self.portfolio_time_series['cagr_SPY'] = [0] + [100 * ((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
         self.portfolio_time_series['cagr_BOVA11'] = [0] + [100 * ((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
-        self.portfolio_time_series.drop(columns = {'level_0', 'index'}, inplace = True)
+        self.portfolio_time_series.drop(columns = {'index'}, inplace = True)
         self.portfolio_time_series.set_index('date', inplace = True)
