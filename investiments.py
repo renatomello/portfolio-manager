@@ -85,7 +85,7 @@ class Investments():
         connection.close()
         engine = psqlEngine(self.database)
         connection = engine.connect()
-        self.bova = read_sql_query("SELECT date, close FROM complete WHERE ticker = 'BOVA11' ORDER BY date", connection)
+        self.bova = read_sql_query("SELECT date, close FROM domestic WHERE ticker = 'BOVA11' ORDER BY date", connection)
         connection.close()
         engine.dispose()
         self.spy = self.insert_weekends(self.spy)
@@ -206,7 +206,7 @@ class Investments():
             elif (asset in self.domestic_options_tickers) or (asset in self.domestic_tickers):
                 engine = psqlEngine(self.database)
                 connection = engine.connect()
-                close_price = read_sql_query("SELECT close FROM complete WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
+                close_price = read_sql_query("SELECT close FROM domestic WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
                 connection.close()
                 engine.dispose()
             else:
@@ -382,7 +382,7 @@ class Investments():
             else:
                 engine = psqlEngine(self.database)
                 connection = engine.connect()
-                date = read_sql_query("SELECT date FROM complete WHERE ticker = '{}' ORDER BY date".format(quote), connection).iloc[-1].values[0]
+                date = read_sql_query("SELECT date FROM domestic WHERE ticker = '{}' ORDER BY date".format(quote), connection).iloc[-1].values[0]
                 connection.close()
                 engine.dispose()
             dates.append(date)
@@ -429,7 +429,7 @@ class Investments():
                 else:
                     engine = psqlEngine(self.database)
                     connection = engine.connect()
-                    prices = read_sql_query("SELECT date, close FROM complete WHERE ticker = '{}' ORDER BY date".format(quote), connection).drop_duplicates('date')
+                    prices = read_sql_query("SELECT date, close FROM domestic WHERE ticker = '{}' ORDER BY date".format(quote), connection).drop_duplicates('date')
                     connection.close()
                     engine.dispose()
                     prices = self.insert_weekends(prices)
