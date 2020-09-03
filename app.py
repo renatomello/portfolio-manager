@@ -1,7 +1,5 @@
 #%%
-from sys import stdout
 from time import sleep
-from datetime import datetime as dt
 from sqlite3 import connect
 
 from pandas import DataFrame, read_sql_query, concat
@@ -13,48 +11,34 @@ from functions import psqlEngine
 import matplotlib.pyplot as plt
 
 filename = 'database.ini'
-key = ''
+key = '12FCWWSQ0N28V8QV'
 
-#%%
+##%%
 # Update_Assets(key = key, database = 'international.db')
-
-# connection = connect('database.db')
-# tickers = read_sql_query("SELECT name FROM sqlite_master WHERE type='table';", connection).name.to_list()
-# connection.close()
-
-# for ticker in tickers:
-#     stdout.write('\r\x1b[K' + ticker)
-#     stdout.flush()
-#     connection = connect('database.db')
-#     df = read_sql_query('SELECT * FROM "{}" ORDER BY date'.format(ticker), connection)
-#     connection.close()
-
-#     engine = psqlEngine(filename = filename)
-#     connection = engine.connect()
-#     df.to_sql(ticker, connection, if_exists = 'replace', index = False)
-#     connection.close()
-#     engine.dispose()
+# Update_Assets(key = key, database = 'currency.db')
 
 #%%
-investments = Investments(start_date = '2020-01-01')
+investments = Investments(start_date = '2020-04-01')
 portfolio, portfolio_aggregate = investments('portfolio')
 dollar = investments('dollar')
-# investments('save')
+investments('save')
 time_series = investments('time_series')
-# time_series
+time_series
 
 #%%
 x = time_series.index
 date_plot = [x[k] for k in range(0, len(x), 11)]
 y1 = time_series.return_portfolio
-y2 = time_series.return_SPY
-y3 = time_series.return_BOVA11
+# y2 = time_series.return_SPY
+# y3 = time_series.return_BOVA11
+y4 = time_series.return_port_bench
 
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
 ax.plot(x, y1, label = 'Portfolio')
-ax.plot(x, y2, label = 'SPY')
-ax.plot(x, y3, label = 'BOVA11 (USD)')
+# ax.plot(x, y2, label = 'SPY')
+# ax.plot(x, y3, label = 'BOVA11 (USD)')
+ax.plot(x, y4, label = '60/40 portfolio')
 
 leg = plt.legend(loc = 'upper left', frameon = False)
 for text in leg.get_texts():
@@ -66,18 +50,20 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-start = 180
+start = 60
 x = time_series.index[-start:]
 date_plot = [x[k] for k in range(0, len(x), 11)]
 y1 = time_series.cagr_portfolio.iloc[-start:]
-y2 = time_series.cagr_SPY.iloc[-start:]
-y3 = time_series.cagr_BOVA11.iloc[-start:]
+# y2 = time_series.cagr_SPY.iloc[-start:]
+# y3 = time_series.cagr_BOVA11.iloc[-start:]
+y4 = time_series.cagr_port_bench.iloc[-start:]
 
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
 ax.plot(x, y1, label = 'Portfolio')
-ax.plot(x, y2, label = 'SPY')
-ax.plot(x, y3, label = 'BOVA11 (USD)')
+# ax.plot(x, y2, label = 'SPY')
+# ax.plot(x, y3, label = 'BOVA11 (USD)')
+ax.plot(x, y4, label = '60/40 portfolio')
 
 leg = plt.legend(loc = 'upper left', frameon = False)
 for text in leg.get_texts():
