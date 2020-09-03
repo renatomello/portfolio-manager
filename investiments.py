@@ -19,6 +19,8 @@ class Investments():
         self.get_all_assets()
 
         self.domestic_bond_returns()
+        self.get_benchmarks()
+
         self.portfolio_domestic_stocks = self.get_quotas('domestic_stocks')
         self.portfolio_international_stocks = self.get_quotas('international_stocks')
         self.portfolio_crypto = self.get_quotas('crypto')
@@ -26,8 +28,6 @@ class Investments():
 
         self.get_portfolio()
         self.get_aggregate()
-
-        self.get_benchmarks()
         self.get_time_series()
 
     def __call__(self, flag = 'assets'):
@@ -92,6 +92,21 @@ class Investments():
         self.bova = self.insert_weekends(self.bova)
         self.bova = self.bova.loc[(self.bova.date >= self.dollar_full.date.iloc[0]) & (self.bova.date <= self.dollar_full.date.iloc[-1])]
         self.bova['close_dollar'] = [x*y for x, y in zip(self.bova.close.to_list(), self.dollar_full.close.to_list())]
+
+    def get_return_benchmark_portfolio(self):
+        value_bond, value_bova = 400, 600
+        value = list()
+        dates = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date), 'date'].to_list()
+        bova_dollar = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date), 'close_dollar']
+        interests = self.insert_weekends(self.cdi[['date', 'interest']], asset = '6040').interest
+        for interest, return_bova in zip(interests, bova_dollar.pct_change().fillna(0)):
+            value_bond = value_bond * interest
+            value_bova = value_bova * (1 + return_bova)
+            value.append(value_bond + value_bova)
+        self.benchmark_portfolio = DataFrame({
+            'date': dates,
+            'portfolio': value,
+        })
 
     def domestic_bond_returns(self):
         end = dt_date.today().strftime('%Y-%m-%d')
@@ -256,6 +271,13 @@ class Investments():
         df = df.reindex(dates, fill_value = 0)
         df.reset_index(inplace = True)
         close = list()
+        if asset == '6040':
+            for value in df.interest:
+                if value != 0:
+                    close.append(value)
+                if value == 0:
+                    close.append(1.)
+            df['interest'] = close
         if asset == 'bond':
             for value in df.portfolio:
                 if value != 0:
@@ -454,8 +476,12 @@ class Investments():
         self.portfolio_time_series['return_portfolio'] = self.get_returns(self.portfolio_time_series)
         self.portfolio_time_series['return_SPY'] = 100 * ((self.portfolio_time_series.SPY.pct_change() + 1).fillna(1).cumprod() - 1)
         self.portfolio_time_series['return_BOVA11'] = 100 * ((self.portfolio_time_series.BOVA11.pct_change() + 1).fillna(1).cumprod() - 1)
+        self.get_return_benchmark_portfolio()
+        self.portfolio_time_series['port_bench'] = self.benchmark_portfolio.portfolio.to_list()
+        self.portfolio_time_series['return_port_bench'] = [0] + 100 *((self.benchmark_portfolio.portfolio.pct_change() + 1).fillna(1).cumprod() - 1)
         self.portfolio_time_series['cagr_portfolio'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
         self.portfolio_time_series['cagr_SPY'] = [0] + [100 * ((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
         self.portfolio_time_series['cagr_BOVA11'] = [0] + [100 * ((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
+        self.portfolio_time_series['cagr_port_bench'] = [0] + [100 * ((cagr / self.benchmark_portfolio.portfolio.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.benchmark_portfolio.portfolio.iloc[1:], 1)]
         self.portfolio_time_series.drop(columns = {'index'}, inplace = True)
         self.portfolio_time_series.set_index('date', inplace = True)
