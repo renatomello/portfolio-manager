@@ -247,7 +247,7 @@ class Investments():
         self.portfolio['crypto'] = self.portfolio_crypto
         self.portfolio['domestic options'] = self.portfolio_domestic_options
         self.portfolio = concat(self.portfolio)
-        self.portfolio = self.portfolio.loc[~(self.portfolio.quotas == 0.)]
+        self.portfolio = self.portfolio.loc[~((self.portfolio.quotas == 0.) | (self.portfolio.value_usd == 0.))]
         # self.portfolio = self.portfolio.loc[~(self.portfolio.asset == 'IPOC')].loc[~(self.portfolio.asset == 'IPOB')]
 
     def get_aggregate(self):

@@ -13,32 +13,40 @@ import matplotlib.pyplot as plt
 filename = 'database.ini'
 key = '12FCWWSQ0N28V8QV'
 
-##%%
 # Update_Assets(key = key, database = 'international.db')
 # Update_Assets(key = key, database = 'currency.db')
 
 #%%
-investments = Investments(start_date = '2020-04-01')
+investments = Investments(start_date = '2020-05-01')
 portfolio, portfolio_aggregate = investments('portfolio')
+portfolio = portfolio.loc[~(portfolio.quotas == 0.)]
 dollar = investments('dollar')
 investments('save')
 time_series = investments('time_series')
 time_series
 
 #%%
+vector = [4666.56]
+aux = DataFrame({
+    'asset': ['domestics funds'],
+    'value_brl': vector,
+    'value_usd': [item * dollar for item in vector],
+    'barbell': 'others',
+})
+portfolio_aggregate = concat([portfolio_aggregate, aux])
+portfolio_aggregate.sort_values(by = ['value_usd'], ascending = False, inplace = True)
+portfolio_aggregate = portfolio_aggregate.round(2)
+
+#%%
 x = time_series.index
 date_plot = [x[k] for k in range(0, len(x), 11)]
 y1 = time_series.return_portfolio
-# y2 = time_series.return_SPY
-# y3 = time_series.return_BOVA11
-y4 = time_series.return_port_bench
+y2 = time_series.return_port_bench
 
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
 ax.plot(x, y1, label = 'Portfolio')
-# ax.plot(x, y2, label = 'SPY')
-# ax.plot(x, y3, label = 'BOVA11 (USD)')
-ax.plot(x, y4, label = '60/40 portfolio')
+ax.plot(x, y2, label = '60/40 portfolio')
 
 leg = plt.legend(loc = 'upper left', frameon = False)
 for text in leg.get_texts():
@@ -54,16 +62,12 @@ start = 60
 x = time_series.index[-start:]
 date_plot = [x[k] for k in range(0, len(x), 11)]
 y1 = time_series.cagr_portfolio.iloc[-start:]
-# y2 = time_series.cagr_SPY.iloc[-start:]
-# y3 = time_series.cagr_BOVA11.iloc[-start:]
-y4 = time_series.cagr_port_bench.iloc[-start:]
+y2 = time_series.cagr_port_bench.iloc[-start:]
 
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
 ax.plot(x, y1, label = 'Portfolio')
-# ax.plot(x, y2, label = 'SPY')
-# ax.plot(x, y3, label = 'BOVA11 (USD)')
-ax.plot(x, y4, label = '60/40 portfolio')
+ax.plot(x, y2, label = '60/40 portfolio')
 
 leg = plt.legend(loc = 'upper left', frameon = False)
 for text in leg.get_texts():
@@ -94,48 +98,117 @@ plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
 #%%
-vector = []
-aux = DataFrame({
-    'asset': ['domestics funds'],
-    'value_brl': vector,
-    'value_usd': [item * dollar for item in vector],
-})
-portfolio_aggregate = concat([portfolio_aggregate, aux])
-portfolio_aggregate.sort_values(by = ['value_usd'], ascending = False, inplace = True)
-portfolio_aggregate
+my_circle_1 = plt.Circle( (0,0), 0.55, color='white')
+my_circle_2 = plt.Circle( (0,0), 0.55, color='white')
+my_circle_3 = plt.Circle( (0,0), 0.55, color='white')
+my_circle_4 = plt.Circle( (0,0), 0.55, color='white')
+my_circle_5 = plt.Circle( (0,0), 0.55, color='white')
+my_circle_6 = plt.Circle( (0,0), 0.55, color='white')
 
 #%%
 plt.pie(
     x = portfolio_aggregate.value_usd, 
     labels = portfolio_aggregate.asset,
-    shadow = True,
     autopct = '%1.1f%%',
     pctdistance = 0.80,
     startangle = 90,
+    wedgeprops = { 'linewidth' : 7, 'edgecolor' : 'white' },
     )
+p = plt.gcf()
+p.gca().add_artist(my_circle_1)
 plt.tight_layout()
+plt.title('Categories')
 plt.show()
 
-#%%
-plt.pie(
+fig, ax = plt.subplots(1, 2, figsize = (15, 8))
+ax[0].set_title('International Stocks')
+ax[0].pie(
     x = portfolio.loc['international stocks'].value_usd, 
     labels = portfolio.loc['international stocks'].asset,
-    shadow = True,
     autopct = '%1.1f%%',
     pctdistance = 0.80,
     startangle = 90,
+    wedgeprops = { 'linewidth' : 6, 'edgecolor' : 'white' },
     )
+p = plt.gcf()
+p.gca().add_artist(my_circle_2)
+
+ax[1].set_title('Domestic Stocks')
+ax[1].pie(
+    x = portfolio.loc['domestic stocks'].value_usd, 
+    labels = portfolio.loc['domestic stocks'].asset,
+    autopct = '%1.1f%%',
+    pctdistance = 0.80,
+    startangle = 90,
+    wedgeprops = { 'linewidth' : 7, 'edgecolor' : 'white' },
+    )
+p = plt.gcf()
+p.gca().add_artist(my_circle_3)
+plt.tight_layout()
+plt.show()
+
+#%%
+growth_international = ['AMZN', 'GOOGL', 'ARKK', 'IPOB', 'IPOC', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'SPCE', 'SPOT', 'TWTR', 'WORK']
+value_international = ['IBM', 'JPM', 'HON']
+value_domestic = ['BBAS3', 'BBDC4', 'EGIE3', 'ITSA4', 'TAEE11', 'TIET11', 'WHRL4']
+portfolio_growth_value = portfolio.loc[~(portfolio.asset == 'domestic bonds')]
+df = DataFrame()
+for index in portfolio_growth_value.index.unique(0):
+    barbell = list()
+    aux = portfolio_growth_value.loc[index]
+    for asset in aux.asset:
+        if asset in growth_international:
+            barbell.append('growth')
+        elif (asset in value_domestic) or (asset in value_international):
+            barbell.append('value')
+        else:
+            barbell.append('others')
+    aux['barbell'] = barbell
+    df = concat([df, aux])
+    del aux
+portfolio_growth_value = df
+del df
+
+plt.pie(
+    x = portfolio_growth_value.groupby('barbell').sum()[['value_usd']], 
+    labels = portfolio_growth_value.groupby('barbell').sum()[['value_usd']].index,
+    autopct = '%1.1f%%',
+    pctdistance = 0.80,
+    startangle = 90,
+    wedgeprops = { 'linewidth' : 5, 'edgecolor' : 'white' },
+    )
+p = plt.gcf()
+p.gca().add_artist(my_circle_4)
+plt.title('Barbell Strategy')
 plt.tight_layout()
 plt.show()
 
 #%%
 plt.pie(
-    x = portfolio.loc['domestic stocks'].value_usd, 
-    labels = portfolio.loc['domestic stocks'].asset,
-    shadow = True,
+    x = portfolio_growth_value.loc[portfolio_growth_value.barbell == 'growth', 'value_usd'], 
+    labels = portfolio_growth_value.loc[portfolio_growth_value.barbell == 'growth', 'asset'],
     autopct = '%1.1f%%',
     pctdistance = 0.80,
     startangle = 90,
+    wedgeprops = { 'linewidth' : 5, 'edgecolor' : 'white' },
     )
+p = plt.gcf()
+p.gca().add_artist(my_circle_5)
+plt.title('Growth Stocks')
+plt.tight_layout()
+plt.show()
+
+#%%
+plt.pie(
+    x = portfolio_growth_value.loc[portfolio_growth_value.barbell == 'value', 'value_usd'], 
+    labels = portfolio_growth_value.loc[portfolio_growth_value.barbell == 'value', 'asset'],
+    autopct = '%1.1f%%',
+    pctdistance = 0.80,
+    startangle = 90,
+    wedgeprops = { 'linewidth' : 5, 'edgecolor' : 'white' },
+    )
+p = plt.gcf()
+p.gca().add_artist(my_circle_6)
+plt.title('Value Stocks')
 plt.tight_layout()
 plt.show()
