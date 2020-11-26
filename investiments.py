@@ -25,6 +25,7 @@ class Investments():
         self.portfolio_international_stocks = self.get_quotas('international_stocks')
         self.portfolio_crypto = self.get_quotas('crypto')
         self.portfolio_domestic_options = self.get_quotas('domestic_options')
+        self.portfolio_domestic_funds = self.get_quotas('domestic_funds')
 
         self.get_portfolio()
         self.get_aggregate()
@@ -63,12 +64,14 @@ class Investments():
         self.domestic_stocks_path = '{}stocks/domestic/'.format(self.path)
         self.international_stocks_path = '{}stocks/international/'.format(self.path)
         self.domestic_options_path = '{}options/domestic/'.format(self.path)
+        self.domestic_funds_path = '{}funds/domestic/'.format(self.path)
         self.list_paths = [
             self.domestic_bonds_path, 
             self.crypto_path, 
             self.domestic_stocks_path, 
             self.international_stocks_path, 
             self.domestic_options_path,
+            self.domestic_funds_path,
         ]
 
     def get_dollar(self):
@@ -132,6 +135,7 @@ class Investments():
         self.interests, self.fractions = list(), list()
         self.domestic_tickers, self.international_tickers = list(), list()
         self.domestic_options_tickers = list()
+        self.domestic_funds_tickers = list()
         for directory in self.list_paths:
             list_files = list()
             for filename in listdir(directory):
@@ -147,6 +151,8 @@ class Investments():
                         self.international_tickers.append(filename.replace('.csv', '').upper())
                     if directory == self.domestic_options_path:
                         self.domestic_options_tickers.append(filename.replace('.csv', '').upper())
+                    if directory == self.domestic_funds_path:
+                        self.domestic_funds_tickers.append(filename.replace('.csv', '').upper())
             dictionary = dict()
             if directory == self.domestic_bonds_path:
                 for filename, interest in zip(list_files, self.interests):
@@ -164,13 +170,21 @@ class Investments():
                     symbols = self.international_tickers
                 if directory == self.domestic_options_path:
                     symbols = self.domestic_options_tickers
+                if directory == self.domestic_funds_path:
+                    symbols = self.domestic_funds_tickers
                 for filename, ticker in zip(list_files, symbols):
-                    df = read_csv(filename)
-                    if (ticker in self.domestic_tickers) or (ticker in self.domestic_options_tickers):
+                    df = read_csv(filename)                        
+                    if ticker in self.domestic_funds_tickers:
+                        df.set_index('date', inplace = True)
+                        df['purchase_price'] = df.purchase_price.diff()
+                        df = df.dropna()
+                        df.reset_index(inplace = True)
+                    if (ticker in self.domestic_tickers) or (ticker in self.domestic_options_tickers) or (ticker in self.domestic_funds_tickers):
                         price_dollar = list()
                         for price, data in zip(df.purchase_price, df.date):
                             price_dollar.append(price * self.dollar_full.loc[self.dollar_full.date == data, 'close'].iloc[0])
                         df['purchase_price'] = price_dollar
+                        dictionary[ticker] = df
                     df['cum_share'] = df.share.cumsum()
                     df['price_share'] = (df.purchase_price / df.share)
                     df['cum_price_share'] = df.price_share.expanding().mean()
@@ -184,6 +198,8 @@ class Investments():
                     self.international_stocks = concat(dictionary)
                 if directory == self.domestic_options_path:
                     self.domestic_options = concat(dictionary)
+                if directory == self.domestic_funds_path:
+                    self.domestic_funds = concat(dictionary)
 
     def get_quotas(self, asset):
         quotas = dict()
@@ -191,12 +207,15 @@ class Investments():
         if asset == 'crypto':
             list_tickers = self.fractions
         if asset == 'domestic_stocks':
-            list_tickers  = self.domestic_tickers
+            list_tickers = self.domestic_tickers
             domestic = True
         if asset == 'international_stocks':
-            list_tickers  = self.international_tickers
+            list_tickers = self.international_tickers
         if asset == 'domestic_options':
             list_tickers = self.domestic_options_tickers
+            domestic = True
+        if asset == 'domestic_funds':
+            list_tickers = self.domestic_funds_tickers
             domestic = True
         for ticker in list_tickers:
             key = ticker.upper()
@@ -208,6 +227,8 @@ class Investments():
                 quotas[key] = self.international_stocks.loc[ticker].cum_share.iloc[-1]
             if asset == 'domestic_options':
                 quotas[key] = self.domestic_options.loc[ticker].cum_share.iloc[-1]
+            if asset == 'domestic_funds':
+                quotas[key] = 1.
         portfolio = DataFrame({
             'asset': list(quotas.keys()),
             'quotas': list(quotas.values())
@@ -224,6 +245,8 @@ class Investments():
                 close_price = read_sql_query("SELECT close FROM domestic WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
                 connection.close()
                 engine.dispose()
+            elif asset in self.domestic_funds_tickers:
+                close_price = read_csv(self.domestic_funds_path + '{}.csv'.format(asset.lower())).share.iloc[-1]
             else:
                 connection = connect(self.international_database)
                 close_price = read_sql_query("SELECT adjusted_close as close FROM '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
@@ -246,8 +269,9 @@ class Investments():
         self.portfolio['international stocks'] = self.portfolio_international_stocks
         self.portfolio['crypto'] = self.portfolio_crypto
         self.portfolio['domestic options'] = self.portfolio_domestic_options
+        self.portfolio['domestic funds'] = self.portfolio_domestic_funds
         self.portfolio = concat(self.portfolio)
-        self.portfolio = self.portfolio.loc[~((self.portfolio.quotas == 0.) | (self.portfolio.value_usd == 0.))]
+        # self.portfolio = self.portfolio.loc[~((self.portfolio.quotas == 0.) | (self.portfolio.value_usd == 0.))]
         # self.portfolio = self.portfolio.loc[~(self.portfolio.asset == 'IPOC')].loc[~(self.portfolio.asset == 'IPOB')]
 
     def get_aggregate(self):
@@ -312,9 +336,9 @@ class Investments():
                 columns_bonds.append(elem)
         domestic_bonds = self.domestic_bonds[columns_bonds].rename(columns = {'purchase_price_dollar': 'purchase_price'})
         if options == True:
-            df = concat([domestic_bonds, self.domestic_stocks[columns], self.international_stocks[columns], self.crypto[columns], self.domestic_options[columns]])
+            df = concat([domestic_bonds, self.domestic_stocks[columns], self.international_stocks[columns], self.crypto[columns], self.domestic_funds[columns], self.domestic_options[columns]])
         if options == False:
-            df = concat([domestic_bonds, self.domestic_stocks[columns], self.international_stocks[columns], self.crypto[columns]])
+            df = concat([domestic_bonds, self.domestic_stocks[columns], self.international_stocks[columns], self.crypto[columns], self.domestic_funds[columns]])
         return df
     
     def get_portfolio_invested(self, df):
@@ -380,7 +404,8 @@ class Investments():
         start_international = self.international_stocks[['date']].sort_values(by = 'date').iloc[0].values[0]
         start_crypto = self.crypto[['date']].sort_values(by = 'date').iloc[0].values[0]
         start_domestic_options = self.domestic_options[['date']].sort_values(by = 'date').iloc[0].values[0]
-        start_date = min(start_domestic, start_international, start_crypto, start_domestic_options)
+        start_domestic_funds = self.domestic_funds[['date']].sort_values(by = 'date').iloc[0].values[0]
+        start_date = min(start_domestic, start_international, start_crypto, start_domestic_options, start_domestic_funds)
         self.start_date = self.kwargs.get('start_date', start_date)
         self.start_date = dt.strptime(self.start_date, '%Y-%m-%d').strftime('%Y-%m-%d')
     
@@ -401,6 +426,8 @@ class Investments():
                 connection.close()
             elif quote in self.interests:
                 date = self.cdi.date.iloc[-1]
+            elif quote in self.domestic_funds_tickers:
+                date = self.domestic_funds[['date']].sort_values(by = 'date').iloc[-1].values[0]
             else:
                 engine = psqlEngine(self.database)
                 connection = engine.connect()
@@ -422,6 +449,7 @@ class Investments():
         df = self.get_concat_dataframe(['date', 'share'])
         quotes = df.index.unique(level = 0).to_list()
         for quote in quotes:
+            print(quote)
             if quote in self.interests:
                 for data, value in zip(df.loc[quote].date, df.loc[quote].purchase_price):
                     interests = self.cdi.loc[self.cdi.date >= data, ['date', 'interest']]
@@ -437,6 +465,16 @@ class Investments():
                     interests.drop(columns = {'interest'}, inplace = True)
                     interests = self.insert_weekends(interests, asset = 'bond')
                     dataframe = concat([dataframe, interests])
+            elif quote in self.domestic_funds_tickers:
+                prices = self.domestic_funds[['date', 'share']].sort_values(by = 'date')
+                prices.rename(columns = {'share': 'close'}, inplace = True)
+                lista = list()
+                for date, price in zip(prices.date, prices.close):
+                    conversion = self.dollar_full.loc[self.dollar_full.date ==  date, 'close'].iloc[0]
+                    lista.append(price * conversion)
+                prices['portfolio'] = lista
+                prices.drop(columns = {'close'}, inplace = True)
+                dataframe = concat([dataframe, prices])
             else:
                 if quote in self.fractions:
                     connection = connect(self.currency_database)
@@ -468,7 +506,9 @@ class Investments():
         dataframe = DataFrame(dataframe).loc[(dataframe.index >= self.start_date) & (dataframe.index <= self.end_date)]
         self.portfolio_time_series = DataFrame()
         self.portfolio_time_series['date'] = dates
+        # print(len(self.portfolio_time_series), len(dataframe))
         self.portfolio_time_series['portfolio'] = dataframe.portfolio.to_list()
+        # print(self.portfolio_time_series)
         self.portfolio_time_series['portfolio_invested'] = self.get_portfolio_invested(self.portfolio_time_series)
         self.portfolio_time_series['SPY'] = self.spy.loc[(self.spy.date >= self.start_date) & (self.spy.date <= self.end_date), 'close'].to_list()
         self.portfolio_time_series['BOVA11'] = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date)]['close_dollar'].to_list()

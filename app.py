@@ -7,7 +7,6 @@ from pandas import DataFrame, read_sql_query, concat
 from assets import Update_Assets
 from investiments import Investments
 from functions import psqlEngine
-
 import matplotlib.pyplot as plt
 
 filename = 'database.ini'
@@ -24,18 +23,6 @@ dollar = investments('dollar')
 investments('save')
 time_series = investments('time_series')
 time_series
-
-#%%
-vector = [4666.56]
-aux = DataFrame({
-    'asset': ['domestics funds'],
-    'value_brl': vector,
-    'value_usd': [item * dollar for item in vector],
-    'barbell': 'others',
-})
-portfolio_aggregate = concat([portfolio_aggregate, aux])
-portfolio_aggregate.sort_values(by = ['value_usd'], ascending = False, inplace = True)
-portfolio_aggregate = portfolio_aggregate.round(2)
 
 #%%
 x = time_series.index
@@ -87,7 +74,8 @@ y2 = time_series.portfolio_invested
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
 ax.plot(x, y2, label = 'Invested', color = 'black')
-ax.fill_between(x, y1, label = 'Portfolio', alpha = 0.6)
+ax.plot(x, y1, label = 'Portfolio')
+ax.fill_between(x, y1, alpha = 0.4)
 
 leg = plt.legend(loc = 'upper left', frameon = False)
 for text in leg.get_texts():
@@ -148,9 +136,9 @@ plt.tight_layout()
 plt.show()
 
 #%%
-growth_international = ['AMZN', 'GOOGL', 'ARKK', 'IPOB', 'IPOC', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'SPCE', 'SPOT', 'TWTR', 'WORK']
-value_international = ['IBM', 'JPM', 'HON']
-value_domestic = ['BBAS3', 'BBDC4', 'EGIE3', 'ITSA4', 'TAEE11', 'TIET11', 'WHRL4']
+growth_international = ['AMZN', 'ARKG', 'ARKK', 'GOOGL', 'IPOB', 'IPOC', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'SPCE', 'SPOT', 'TSLA', 'WORK']
+value_international = ['IBM', 'HON']
+value_domestic = ['EGIE3', 'TAEE11', 'TIET11', 'WHRL4']
 portfolio_growth_value = portfolio.loc[~(portfolio.asset == 'domestic bonds')]
 df = DataFrame()
 for index in portfolio_growth_value.index.unique(0):
