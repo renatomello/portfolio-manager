@@ -449,7 +449,6 @@ class Investments():
         df = self.get_concat_dataframe(['date', 'share'])
         quotes = df.index.unique(level = 0).to_list()
         for quote in quotes:
-            print(quote)
             if quote in self.interests:
                 for data, value in zip(df.loc[quote].date, df.loc[quote].purchase_price):
                     interests = self.cdi.loc[self.cdi.date >= data, ['date', 'interest']]
@@ -506,9 +505,7 @@ class Investments():
         dataframe = DataFrame(dataframe).loc[(dataframe.index >= self.start_date) & (dataframe.index <= self.end_date)]
         self.portfolio_time_series = DataFrame()
         self.portfolio_time_series['date'] = dates
-        # print(len(self.portfolio_time_series), len(dataframe))
         self.portfolio_time_series['portfolio'] = dataframe.portfolio.to_list()
-        # print(self.portfolio_time_series)
         self.portfolio_time_series['portfolio_invested'] = self.get_portfolio_invested(self.portfolio_time_series)
         self.portfolio_time_series['SPY'] = self.spy.loc[(self.spy.date >= self.start_date) & (self.spy.date <= self.end_date), 'close'].to_list()
         self.portfolio_time_series['BOVA11'] = self.bova.loc[(self.bova.date >= self.start_date) & (self.bova.date <= self.end_date)]['close_dollar'].to_list()
