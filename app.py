@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 filename = 'database.ini'
 key = '12FCWWSQ0N28V8QV'
 
-# Update_Assets(key = key, database = 'international.db')
-# Update_Assets(key = key, database = 'currency.db')
+# update = Update_Assets(key = key, database = 'international.db')
+# update = Update_Assets(key = key, database = 'currency.db')
 
 #%%
 investments = Investments(start_date = '2020-05-01')
@@ -67,11 +67,11 @@ plt.show()
 
 #%%
 x = time_series.index
-date_plot = [x[k] for k in range(0, len(x), 15)]
+date_plot = [x[k] for k in range(0, len(x), 24)]
 y1 = time_series.portfolio
 y2 = time_series.portfolio_invested
 
-fig, ax = plt.subplots(1, figsize = (8, 5))
+fig, ax = plt.subplots(1, figsize = (15, 8))
 fig.tight_layout()
 ax.plot(x, y2, label = 'Invested', color = 'black')
 ax.plot(x, y1, label = 'Portfolio')
@@ -80,10 +80,11 @@ ax.fill_between(x, y1, alpha = 0.4)
 leg = plt.legend(loc = 'upper left', frameon = False)
 for text in leg.get_texts():
     plt.setp(text, color = 'black')
-ax.set_ylabel('Price of Assets (USD)')
+ax.set_ylabel('Valuation of Assets (USD)')
 plt.xticks(date_plot)
 plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
-plt.show()
+plt.savefig('plot.png', bbox_inches = 'tight')
+# plt.show()
 
 #%%
 my_circle_1 = plt.Circle( (0,0), 0.55, color='white')
@@ -136,7 +137,7 @@ plt.tight_layout()
 plt.show()
 
 #%%
-growth_international = ['AMZN', 'ARKG', 'ARKK', 'GOOGL', 'IPOB', 'IPOC', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'SPCE', 'SPOT', 'TSLA', 'WORK']
+growth_international = ['AMZN', 'ARKG', 'ARKK', 'GOOGL', 'IPOB', 'IPOC', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'MP', 'SPCE', 'SPOT', 'TSLA', 'WORK']
 value_international = ['IBM', 'HON']
 value_domestic = ['EGIE3', 'TAEE11', 'TIET11', 'WHRL4']
 portfolio_growth_value = portfolio.loc[~(portfolio.asset == 'domestic bonds')]
