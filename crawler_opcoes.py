@@ -20,7 +20,7 @@ db_config = 'database.ini'
 #     tickers.append(list(df.ticker.unique()))
 # tickers = reduce(iconcat, tickers, [])
 # tickers.sort()
-#
+
 #%%
 engine = psqlEngine(db_config)
 connection = engine.connect()
