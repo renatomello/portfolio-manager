@@ -1,27 +1,11 @@
 #%%
-from sys import stdout
-from time import sleep
-from os import path, listdir
-from sqlite3 import connect
-from pandas import DataFrame, read_table, read_sql_query
-from functools import reduce
-from operator import iconcat
+from os import listdir
+from pandas import read_table, read_sql_query
 from functions import psqlEngine
 
 directory = '/home/renato/Desktop/dados históricos/'
 db_config = 'database.ini'
 
-# #%%
-# tickers = list()
-# for filename in listdir(directory):
-#     df = read_table(directory + filename, encoding = 'ISO-8859-1').iloc[:-1].reset_index()
-#     df.rename(columns = {df.columns[1]: 'string'}, inplace = True)
-#     df['ticker'] = [elem[12:24].replace(' ', '') for elem in df.string.to_list()]
-#     tickers.append(list(df.ticker.unique()))
-# tickers = reduce(iconcat, tickers, [])
-# tickers.sort()
-
-#%%
 engine = psqlEngine(db_config)
 connection = engine.connect()
 for filename in listdir(directory):
