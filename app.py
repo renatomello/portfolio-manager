@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 filename = 'database.ini'
 key = '12FCWWSQ0N28V8QV'
 
-# update = Update_Assets(key = key, database = 'international.db')
-# update = Update_Assets(key = key, database = 'currency.db')
+# update = Update_Assets(key = key, database = filename, asset_class = 'usa_stocks')
+# update = Update_Assets(key = key, database = filename, asset_class = 'currencies')
 
 #%%
 investments = Investments(start_date = '2020-05-01')
@@ -84,7 +84,7 @@ ax.set_ylabel('Valuation of Assets (USD)')
 plt.xticks(date_plot)
 plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.savefig('plot.png', bbox_inches = 'tight')
-# plt.show()
+plt.show()
 
 #%%
 my_circle_1 = plt.Circle( (0,0), 0.55, color='white')
@@ -137,7 +137,7 @@ plt.tight_layout()
 plt.show()
 
 #%%
-growth_international = ['AMZN', 'ARKG', 'ARKK', 'GOOGL', 'IPOB', 'IPOC', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'MP', 'SPCE', 'SPOT', 'TSLA', 'WORK']
+growth_international = ['AMZN', 'ARKG', 'ARKK', 'GOOGL', 'IPOC', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'MP', 'OPEN', 'QS', 'SPCE', 'SPOT', 'TSLA', 'WORK']
 value_international = ['IBM', 'HON']
 value_domestic = ['EGIE3', 'TAEE11', 'TIET11', 'WHRL4']
 portfolio_growth_value = portfolio.loc[~(portfolio.asset == 'domestic bonds')]

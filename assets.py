@@ -2,9 +2,12 @@ from time import sleep
 from sqlite3 import connect
 
 from pandas import read_sql_query, read_csv
+
 from alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.cryptocurrencies import CryptoCurrencies
 from alpha_vantage.foreignexchange import ForeignExchange
+
+from functions import psqlEngine
 
 
 class Update_Assets():
@@ -20,7 +23,8 @@ class Update_Assets():
 
     def hyperparameters(self):
         self.key = self.kwargs.get('key')
-        self.database = self.kwargs.get('database', 'database.db')
+        self.database = self.kwargs.get('database', 'database.ini')
+        self.asset_class = self.kwargs.get('asset_class', 'currencies')
 
         self.currencies = self.kwargs.get('currencies', 'currencies.csv')
         self.currencies = read_csv(self.currencies)
@@ -58,9 +62,12 @@ class Update_Assets():
                 self.crypto_list.append(ticker)
 
     def get_asset_list(self):
-        connection = connect(self.database)
-        self.asset_list = read_sql_query("SELECT name FROM sqlite_master WHERE type='table';", connection).name
+        engine = psqlEngine(self.database)
+        connection = engine.connect()
+        self.asset_list = read_sql_query('SELECT DISTINCT ticker FROM {} ORDER BY ticker'.format(self.asset_class), connection).ticker
+        # self.asset_list = read_sql_query("SELECT name FROM sqlite_master WHERE type='table';", connection).name
         connection.close()
+        engine.dispose()
         self.asset_list = list(self.asset_list)
         self.asset_list.sort()
         if isinstance(self.asset_list, list):
@@ -89,52 +96,66 @@ class Update_Assets():
         ticker = ticker.replace('.SA', '')
         dataframe = self.rename_reset(dataframe)
         dataframe['date'] = [elem.date().strftime('%Y-%m-%d') for elem in dataframe.date]
-        connection = connect(self.database)
+        dataframe['ticker'] = [ticker]*len(dataframe)
+        if self.asset_class == 'usa_stocks':
+            dataframe['currency'] = ['USD']*len(dataframe)
+        engine = psqlEngine(self.database)
+        connection = engine.raw_connection()
         if flag == 'include':
-            dataframe.to_sql(ticker, connection, if_exists = 'replace', index = False)
+            dataframe.to_sql(self.asset_class, engine, if_exists = 'append', index = False)
         if flag == 'update':
-            reference = read_sql_query('SELECT date FROM "{}" ORDER BY date DESC LIMIT 1'.format(ticker), connection)
+            reference = read_sql_query("SELECT date FROM {} WHERE {}.ticker LIKE '%%{}%%' ORDER BY date DESC LIMIT 1".format(self.asset_class, self.asset_class, ticker), connection)
             reference = reference.values[0][0]
             cursor = connection.cursor()
-            cursor.execute("DELETE FROM '{}' WHERE date LIKE '%{}%'".format(ticker, reference))
+            cursor.execute("DELETE FROM {} WHERE date LIKE '%%{}%%' AND ticker LIKE '%%{}%%'".format(self.asset_class, reference, ticker))
             connection.commit()
+            cursor.close()
             dataframe = dataframe.loc[dataframe.date >= reference]
-            dataframe.to_sql(ticker, connection, if_exists = 'append', index = False)
+            dataframe.to_sql(self.asset_class, engine, if_exists = 'append', index = False)
         connection.close()
+        engine.dispose()
     
     def update_fx(self, df, currency):
         print('FX: {}'.format(currency))
         df = self.rename_reset(df)
         df['date'] = [elem.date().strftime('%Y-%m-%d') for elem in df.date]
-        connection = connect(self.database)
+        df['ticker'] = [currency]*len(df)
+        engine = psqlEngine(self.database)
+        connection = engine.raw_connection()
         if currency not in self.fx_list:
-            df.to_sql(currency, connection, if_exists = 'replace', index = False)
+            df.to_sql(self.asset_class, connection, if_exists = 'append', index = False)
         if currency in self.fx_list:
-            reference = read_sql_query('SELECT date FROM "{}" ORDER BY date DESC LIMIT 1'.format(currency), connection)
+            reference = read_sql_query("SELECT date FROM {} WHERE {}.ticker LIKE '%%{}%%' ORDER BY date DESC LIMIT 1".format(self.asset_class, self.asset_class, currency), connection)
             reference = reference.values[0][0]
             cursor = connection.cursor()
-            cursor.execute("DELETE FROM '{}' WHERE date LIKE '%{}%'".format(currency, reference))
+            cursor.execute("DELETE FROM {} WHERE date LIKE '%%{}%%' AND ticker LIKE '%%{}%%'".format(self.asset_class, reference, currency))
             connection.commit()
+            cursor.close()
             df = df.loc[df.date >= reference]
-            df.to_sql(currency, connection, if_exists = 'append', index = False)
+            df.to_sql(self.asset_class, engine, if_exists = 'append', index = False)
         connection.close()
+        engine.dispose()
 
     def update_crypto(self, df, currency):
         print('Crypto: {}'.format(currency))
         df = self.rename_reset(df, crypto = True)
         df['date'] = [elem.date().strftime('%Y-%m-%d') for elem in df.date]
-        connection = connect(self.database)
+        df['ticker'] = [currency]*len(df)
+        engine = psqlEngine(self.database)
+        connection = engine.raw_connection()
         if currency not in self.crypto_list:
-            df.to_sql(currency, connection, if_exists = 'replace', index = False)
+            df.to_sql(self.asset_class, connection, if_exists = 'append', index = False)
         if currency in self.crypto_list:
-            reference = read_sql_query('SELECT date FROM "{}" ORDER BY date DESC LIMIT 1'.format(currency), connection)
+            reference = read_sql_query("SELECT date FROM {} WHERE {}.ticker LIKE '%%{}%%' ORDER BY date DESC LIMIT 1".format(self.asset_class, self.asset_class, currency), connection)
             reference = reference.values[0][0]
             cursor = connection.cursor()
-            cursor.execute("DELETE FROM '{}' WHERE date LIKE '%{}%'".format(currency, reference))
+            cursor.execute("DELETE FROM {} WHERE date LIKE '%%{}%%' AND ticker like '%%{}%%'".format(self.asset_class, reference, currency))
             connection.commit()
+            cursor.close()
             df = df.loc[df.date >= reference]
-            df.to_sql(currency, connection, if_exists = 'append', index = False)
+            df.to_sql(self.asset_class, engine, if_exists = 'append', index = False)
         connection.close()
+        engine.dispose()
 
     def update_stock_database(self, ticker):
         print('Stock: {}'.format(ticker))

@@ -56,9 +56,10 @@ class Investments():
 
     def hyperparameters(self):
         self.database = self.kwargs.get('database', 'database.ini')
-        self.international_database = self.kwargs.get('international_database', 'international.db')
+        self.domestic_database = self.kwargs.get('domestic_database', 'domestic')
+        self.international_database = self.kwargs.get('international_database', 'usa_stocks')
         self.portfolio_database = self.kwargs.get('portfolio_database', 'portfolio.db')
-        self.currency_database = self.kwargs.get('currency_database', 'currency.db')
+        self.currency_database = self.kwargs.get('currency_database', 'currencies')
         self.domestic_bonds_path = '{}bonds/'.format(self.path)
         self.crypto_path = '{}crypto/'.format(self.path)
         self.domestic_stocks_path = '{}stocks/domestic/'.format(self.path)
@@ -76,19 +77,24 @@ class Investments():
 
     def get_dollar(self):
         currency = 'BRLUSD'
-        connection = connect(self.currency_database)
-        self.dollar = read_sql_query('SELECT * FROM "{}"'.format(currency), connection).iloc[0].close
-        self.dollar_full = read_sql_query('SELECT date, close FROM "{}" ORDER BY date'.format(currency), connection)
+        engine = psqlEngine(self.database)
+        connection = engine.connect()
+        # connection = connect(self.currency_database)
+        self.dollar = read_sql_query("SELECT * FROM {} WHERE ticker = '{}'".format(self.currency_database, currency), connection).iloc[0].close
+        self.dollar_full = read_sql_query("SELECT date, close FROM {} WHERE ticker = '{}' ORDER BY date".format(self.currency_database, currency), connection)
         connection.close()
+        engine.dispose()
         self.dollar_full = self.insert_weekends(self.dollar_full)
 
     def get_benchmarks(self):
-        connection = connect(self.international_database)
-        self.spy = read_sql_query('SELECT date, adjusted_close as close FROM SPY ORDER BY date', connection)
-        connection.close()
         engine = psqlEngine(self.database)
         connection = engine.connect()
-        self.bova = read_sql_query("SELECT date, close FROM domestic WHERE ticker = 'BOVA11' ORDER BY date", connection)
+        # connection = connect(self.international_database)
+        self.spy = read_sql_query("SELECT date, adjusted_close as close FROM {} WHERE ticker = 'SPY' ORDER BY date".format(self.international_database), connection)
+        # connection.close()
+        # engine = psqlEngine(self.database)
+        # connection = engine.connect()
+        self.bova = read_sql_query("SELECT date, close FROM {} WHERE ticker = 'BOVA11' ORDER BY date".format(self.domestic_database), connection)
         connection.close()
         engine.dispose()
         self.spy = self.insert_weekends(self.spy)
@@ -234,23 +240,25 @@ class Investments():
             'quotas': list(quotas.values())
         })
         value_usd, value_brl = list(), list()
+        engine = psqlEngine(self.database)
+        connection = engine.connect()
         for asset in list(quotas.keys()):
             if asset in self.fractions:
-                connection = connect(self.currency_database)
-                close_price = read_sql_query("SELECT close FROM '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
-                connection.close()
+                # connection = connect(self.currency_database)
+                close_price = read_sql_query("SELECT close FROM {} WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(self.currency_database, asset), connection).values.flatten()[0]
+                # connection.close()
             elif (asset in self.domestic_options_tickers) or (asset in self.domestic_tickers):
-                engine = psqlEngine(self.database)
-                connection = engine.connect()
-                close_price = read_sql_query("SELECT close FROM domestic WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
-                connection.close()
-                engine.dispose()
+                # engine = psqlEngine(self.database)
+                # connection = engine.connect()
+                close_price = read_sql_query("SELECT close FROM {} WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(self.domestic_database, asset), connection).values.flatten()[0]
+                # connection.close()
+                # engine.dispose()
             elif asset in self.domestic_funds_tickers:
                 close_price = read_csv(self.domestic_funds_path + '{}.csv'.format(asset.lower())).share.iloc[-1]
             else:
-                connection = connect(self.international_database)
-                close_price = read_sql_query("SELECT adjusted_close as close FROM '{}' ORDER BY date DESC LIMIT 1".format(asset), connection).values.flatten()[0]
-                connection.close()
+                # connection = connect(self.international_database)
+                close_price = read_sql_query("SELECT adjusted_close as close FROM {} WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(self.international_database, asset), connection).values.flatten()[0]
+                # connection.close()
             if domestic == False:
                 value_usd.append(close_price * quotas.get(asset))
                 value_brl.append(close_price * quotas.get(asset) / self.dollar)
@@ -271,8 +279,6 @@ class Investments():
         self.portfolio['domestic options'] = self.portfolio_domestic_options
         self.portfolio['domestic funds'] = self.portfolio_domestic_funds
         self.portfolio = concat(self.portfolio)
-        # self.portfolio = self.portfolio.loc[~((self.portfolio.quotas == 0.) | (self.portfolio.value_usd == 0.))]
-        # self.portfolio = self.portfolio.loc[~(self.portfolio.asset == 'IPOC')].loc[~(self.portfolio.asset == 'IPOB')]
 
     def get_aggregate(self):
         assets = list(self.portfolio.index.unique(level = 0))
@@ -415,26 +421,26 @@ class Investments():
         df = self.get_concat_dataframe(['date'], options = False)
         quotes = df.index.unique(level = 0).to_list()
         dates = [end_spy, end_bova]
+        engine = psqlEngine(self.database)
+        connection = engine.connect()
         for quote in quotes:
             if quote in self.international_tickers:
-                connection = connect(self.international_database)
-                date = read_sql_query('SELECT date FROM "{}" ORDER BY date'.format(quote), connection).iloc[-1].values[0]
-                connection.close()
+                # connection = connect(self.international_database)
+                date = read_sql_query("SELECT date FROM {} WHERE ticker = '{}' ORDER BY date".format(self.international_database, quote), connection).iloc[-1].values[0]
+                # connection.close()
             elif quote in self.fractions:
-                connection = connect(self.currency_database)
-                date = read_sql_query('SELECT date FROM "{}" ORDER BY date'.format(quote), connection).iloc[-1].values[0]
-                connection.close()
+                # connection = connect(self.currency_database)
+                date = read_sql_query("SELECT date FROM {} WHERE ticker = '{}' ORDER BY date".format(self.currency_database, quote), connection).iloc[-1].values[0]
+                # connection.close()
             elif quote in self.interests:
                 date = self.cdi.date.iloc[-1]
             elif quote in self.domestic_funds_tickers:
                 date = self.domestic_funds[['date']].sort_values(by = 'date').iloc[-1].values[0]
             else:
-                engine = psqlEngine(self.database)
-                connection = engine.connect()
-                date = read_sql_query("SELECT date FROM domestic WHERE ticker = '{}' ORDER BY date".format(quote), connection).iloc[-1].values[0]
-                connection.close()
-                engine.dispose()
+                date = read_sql_query("SELECT date FROM {} WHERE ticker = '{}' ORDER BY date".format(self.domestic_database, quote), connection).iloc[-1].values[0]
             dates.append(date)
+        connection.close()
+        engine.dispose()
         end_date = min(dates)
         self.end_date = self.kwargs.get('end_date', end_date)
         self.end_date = dt.strptime(self.end_date, '%Y-%m-%d').strftime('%Y-%m-%d')
@@ -475,28 +481,28 @@ class Investments():
                 prices.drop(columns = {'close'}, inplace = True)
                 dataframe = concat([dataframe, prices])
             else:
+                engine = psqlEngine(self.database)
+                connection = engine.connect()
                 if quote in self.fractions:
-                    connection = connect(self.currency_database)
-                    prices = read_sql_query("SELECT date, close FROM '{}' ORDER BY date".format(quote), connection)
-                    connection.close()
+                    # connection = connect(self.currency_database)
+                    prices = read_sql_query("SELECT date, close FROM {} WHERE ticker = '{}' ORDER BY date".format(self.currency_database, quote), connection)
+                    # connection.close()
                     prices = self.insert_weekends(prices, asset = 'crypto')
                 elif quote in self.international_tickers:
-                    connection = connect(self.international_database)
-                    prices = read_sql_query("SELECT date, adjusted_close as close FROM '{}' ORDER BY date".format(quote), connection)
-                    connection.close()
+                    # connection = connect(self.international_database)
+                    prices = read_sql_query("SELECT date, adjusted_close as close FROM {} WHERE ticker = '{}' ORDER BY date".format(self.international_database, quote), connection)
+                    # connection.close()
                     prices = self.insert_weekends(prices)
                 else:
-                    engine = psqlEngine(self.database)
-                    connection = engine.connect()
                     prices = read_sql_query("SELECT date, close FROM domestic WHERE ticker = '{}' ORDER BY date".format(quote), connection).drop_duplicates('date')
-                    connection.close()
-                    engine.dispose()
                     prices = self.insert_weekends(prices)
                     lista = list()
                     for date, price in zip(prices.date, prices.close):
                         conversion = self.dollar_full.loc[self.dollar_full.date ==  date, 'close']
                         lista.append(price * conversion)
                     prices['close'] = lista
+                connection.close()
+                engine.dispose()
                 for data, share in zip(df.loc[quote].date, df.loc[quote].share):
                     close_price = prices.loc[prices.date >=  data]
                     close_price['portfolio'] = [price * share for price in close_price.close]
@@ -517,8 +523,8 @@ class Investments():
         self.portfolio_time_series['port_bench'] = self.benchmark_portfolio.portfolio.to_list()
         self.portfolio_time_series['return_port_bench'] = [0] + 100 *((self.benchmark_portfolio.portfolio.pct_change() + 1).fillna(1).cumprod() - 1)
         self.portfolio_time_series['cagr_portfolio'] = self.get_returns(self.portfolio_time_series, flag = 'cagr')
-        self.portfolio_time_series['cagr_SPY'] = [0] + [100 * ((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
-        self.portfolio_time_series['cagr_BOVA11'] = [0] + [100 * ((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
-        self.portfolio_time_series['cagr_port_bench'] = [0] + [100 * ((cagr / self.benchmark_portfolio.portfolio.iloc[0]) ** (365 / k) - 1) for k, cagr in enumerate(self.benchmark_portfolio.portfolio.iloc[1:], 1)]
+        self.portfolio_time_series['cagr_SPY'] = [0] + [100 * ((cagr / self.portfolio_time_series.SPY.iloc[0]) ** (250 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.SPY.iloc[1:], 1)]
+        self.portfolio_time_series['cagr_BOVA11'] = [0] + [100 * ((cagr / self.portfolio_time_series.BOVA11.iloc[0]) ** (250 / k) - 1) for k, cagr in enumerate(self.portfolio_time_series.BOVA11.iloc[1:], 1)]
+        self.portfolio_time_series['cagr_port_bench'] = [0] + [100 * ((cagr / self.benchmark_portfolio.portfolio.iloc[0]) ** (250 / k) - 1) for k, cagr in enumerate(self.benchmark_portfolio.portfolio.iloc[1:], 1)]
         self.portfolio_time_series.drop(columns = {'index'}, inplace = True)
         self.portfolio_time_series.set_index('date', inplace = True)
