@@ -99,6 +99,8 @@ class Update_Assets():
         dataframe['ticker'] = [ticker]*len(dataframe)
         if self.asset_class == 'usa_stocks':
             dataframe['currency'] = ['USD']*len(dataframe)
+        if self.asset_class == 'uk_stocks':
+            dataframe['currency'] = ['GBP']*len(dataframe)
         engine = psqlEngine(self.database)
         connection = engine.raw_connection()
         if flag == 'include':
@@ -123,7 +125,7 @@ class Update_Assets():
         engine = psqlEngine(self.database)
         connection = engine.raw_connection()
         if currency not in self.fx_list:
-            df.to_sql(self.asset_class, connection, if_exists = 'append', index = False)
+            df.to_sql(self.asset_class, engine, if_exists = 'append', index = False)
         if currency in self.fx_list:
             reference = read_sql_query("SELECT date FROM {} WHERE {}.ticker LIKE '%%{}%%' ORDER BY date DESC LIMIT 1".format(self.asset_class, self.asset_class, currency), connection)
             reference = reference.values[0][0]
@@ -144,7 +146,7 @@ class Update_Assets():
         engine = psqlEngine(self.database)
         connection = engine.raw_connection()
         if currency not in self.crypto_list:
-            df.to_sql(self.asset_class, connection, if_exists = 'append', index = False)
+            df.to_sql(self.asset_class, engine, if_exists = 'append', index = False)
         if currency in self.crypto_list:
             reference = read_sql_query("SELECT date FROM {} WHERE {}.ticker LIKE '%%{}%%' ORDER BY date DESC LIMIT 1".format(self.asset_class, self.asset_class, currency), connection)
             reference = reference.values[0][0]
