@@ -2,7 +2,7 @@
 from time import sleep
 from sqlite3 import connect
 
-from pandas import DataFrame, read_sql_query, concat
+from pandas import DataFrame, concat
 
 from assets import Update_Assets
 from investiments import Investments
@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 
 filename = 'database.ini'
 key = '12FCWWSQ0N28V8QV'
+quandl_key = 'yn5h-QKf33TUxixs2ex2'
 
 # update = Update_Assets(key = key, database = filename, asset_class = 'usa_stocks')
 # update = Update_Assets(key = key, database = filename, asset_class = 'currencies')
