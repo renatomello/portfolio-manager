@@ -14,6 +14,7 @@ key = '12FCWWSQ0N28V8QV'
 quandl_key = 'yn5h-QKf33TUxixs2ex2'
 
 # update = Update_Assets(key = key, database = filename, asset_class = 'usa_stocks')
+# update = Update_Assets(key = key, database = filename, asset_class = 'uk_stocks')
 # update = Update_Assets(key = key, database = filename, asset_class = 'currencies')
 
 #%%
