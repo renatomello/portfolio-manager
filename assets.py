@@ -65,7 +65,6 @@ class Update_Assets():
         engine = psqlEngine(self.database)
         connection = engine.connect()
         self.asset_list = read_sql_query('SELECT DISTINCT ticker FROM {} ORDER BY ticker'.format(self.asset_class), connection).ticker
-        # self.asset_list = read_sql_query("SELECT name FROM sqlite_master WHERE type='table';", connection).name
         connection.close()
         engine.dispose()
         self.asset_list = list(self.asset_list)
