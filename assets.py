@@ -159,7 +159,7 @@ class Update_Assets():
         engine.dispose()
 
     def update_stock_database(self, ticker):
-        print('Stock: {}'.format(ticker))
+        print('Stock: {}'.format(ticker.replace('.LON', '')))
         if any(letter.isdigit() for letter in ticker) == True:
             ticker = ticker + '.SA'
         if ticker in self.asset_list:
