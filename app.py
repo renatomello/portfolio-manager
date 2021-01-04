@@ -2,7 +2,7 @@
 from time import sleep
 from sqlite3 import connect
 
-from pandas import DataFrame, concat
+from pandas import DataFrame, concat, read_sql_query
 
 from assets import Update_Assets
 from investiments import Investments
@@ -13,6 +13,7 @@ filename = 'database.ini'
 key = '12FCWWSQ0N28V8QV'
 quandl_key = 'yn5h-QKf33TUxixs2ex2'
 
+#%%
 # update = Update_Assets(key = key, database = filename, asset_class = 'usa_stocks')
 # update = Update_Assets(key = key, database = filename, asset_class = 'uk_stocks')
 # update = Update_Assets(key = key, database = filename, asset_class = 'currencies')
