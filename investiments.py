@@ -79,7 +79,6 @@ class Investments():
         currency = 'BRLUSD'
         engine = psqlEngine(self.database)
         connection = engine.connect()
-        # connection = connect(self.currency_database)
         self.dollar = read_sql_query("SELECT * FROM {} WHERE ticker = '{}'".format(self.currency_database, currency), connection).iloc[0].close
         self.dollar_full = read_sql_query("SELECT date, close FROM {} WHERE ticker = '{}' ORDER BY date".format(self.currency_database, currency), connection)
         connection.close()
@@ -89,11 +88,7 @@ class Investments():
     def get_benchmarks(self):
         engine = psqlEngine(self.database)
         connection = engine.connect()
-        # connection = connect(self.international_database)
         self.spy = read_sql_query("SELECT date, adjusted_close as close FROM {} WHERE ticker = 'SPY' ORDER BY date".format(self.international_database), connection)
-        # connection.close()
-        # engine = psqlEngine(self.database)
-        # connection = engine.connect()
         self.bova = read_sql_query("SELECT date, close FROM {} WHERE ticker = 'BOVA11' ORDER BY date".format(self.domestic_database), connection)
         connection.close()
         engine.dispose()
@@ -164,9 +159,10 @@ class Investments():
                 for filename, interest in zip(list_files, self.interests):
                     df = read_csv(filename)
                     dictionary[interest] = df
-                self.domestic_bonds = concat(dictionary)
-                self.domestic_bonds = self.domestic_bonds.rename(columns = {'pct_cdi': 'share'})
-                self.domestic_bonds['purchase_price_dollar'] = [price * self.dollar_full.loc[self.dollar_full.date == date, 'close'].iloc[0] for date, price in zip(self.domestic_bonds.date, self.domestic_bonds.purchase_price) ]
+                if dictionary:
+                    self.domestic_bonds = concat(dictionary)
+                    self.domestic_bonds = self.domestic_bonds.rename(columns = {'pct_cdi': 'share'})
+                    self.domestic_bonds['purchase_price_dollar'] = [price * self.dollar_full.loc[self.dollar_full.date == date, 'close'].iloc[0] for date, price in zip(self.domestic_bonds.date, self.domestic_bonds.purchase_price) ]
             else:
                 if directory == self.crypto_path:
                     symbols = self.fractions
@@ -188,24 +184,28 @@ class Investments():
                     if (ticker in self.domestic_tickers) or (ticker in self.domestic_options_tickers) or (ticker in self.domestic_funds_tickers):
                         price_dollar = list()
                         for price, data in zip(df.purchase_price, df.date):
-                            price_dollar.append(price * self.dollar_full.loc[self.dollar_full.date == data, 'close'].iloc[0])
+                            try:
+                                price_dollar.append(price * self.dollar_full.loc[self.dollar_full.date == data, 'close'].iloc[0])
+                            except:
+                                price_dollar.append(price * 1.)
                         df['purchase_price'] = price_dollar
                         dictionary[ticker] = df
                     df['cum_share'] = df.share.cumsum()
                     df['price_share'] = (df.purchase_price / df.share)
                     df['cum_price_share'] = df.price_share.expanding().mean()
                     dictionary[ticker] = df
-                self.stocks = concat(dictionary)
-                if directory == self.crypto_path:
-                    self.crypto = concat(dictionary)
-                if directory == self.domestic_stocks_path:
-                    self.domestic_stocks = concat(dictionary)
-                if directory == self.international_stocks_path:
-                    self.international_stocks = concat(dictionary)
-                if directory == self.domestic_options_path:
-                    self.domestic_options = concat(dictionary)
-                if directory == self.domestic_funds_path:
-                    self.domestic_funds = concat(dictionary)
+                if dictionary:
+                    self.stocks = concat(dictionary)
+                    if directory == self.crypto_path:
+                        self.crypto = concat(dictionary)
+                    if directory == self.domestic_stocks_path:
+                        self.domestic_stocks = concat(dictionary)
+                    if directory == self.international_stocks_path:
+                        self.international_stocks = concat(dictionary)
+                    if directory == self.domestic_options_path:
+                        self.domestic_options = concat(dictionary)
+                    if directory == self.domestic_funds_path:
+                        self.domestic_funds = concat(dictionary)
 
     def get_quotas(self, asset):
         quotas = dict()
@@ -244,21 +244,13 @@ class Investments():
         connection = engine.connect()
         for asset in list(quotas.keys()):
             if asset in self.fractions:
-                # connection = connect(self.currency_database)
                 close_price = read_sql_query("SELECT close FROM {} WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(self.currency_database, asset), connection).values.flatten()[0]
-                # connection.close()
             elif (asset in self.domestic_options_tickers) or (asset in self.domestic_tickers):
-                # engine = psqlEngine(self.database)
-                # connection = engine.connect()
                 close_price = read_sql_query("SELECT close FROM {} WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(self.domestic_database, asset), connection).values.flatten()[0]
-                # connection.close()
-                # engine.dispose()
             elif asset in self.domestic_funds_tickers:
                 close_price = read_csv(self.domestic_funds_path + '{}.csv'.format(asset.lower())).share.iloc[-1]
             else:
-                # connection = connect(self.international_database)
                 close_price = read_sql_query("SELECT adjusted_close as close FROM {} WHERE ticker = '{}' ORDER BY date DESC LIMIT 1".format(self.international_database, asset), connection).values.flatten()[0]
-                # connection.close()
             if domestic == False:
                 value_usd.append(close_price * quotas.get(asset))
                 value_brl.append(close_price * quotas.get(asset) / self.dollar)
@@ -425,13 +417,9 @@ class Investments():
         connection = engine.connect()
         for quote in quotes:
             if quote in self.international_tickers:
-                # connection = connect(self.international_database)
                 date = read_sql_query("SELECT date FROM {} WHERE ticker = '{}' ORDER BY date".format(self.international_database, quote), connection).iloc[-1].values[0]
-                # connection.close()
             elif quote in self.fractions:
-                # connection = connect(self.currency_database)
                 date = read_sql_query("SELECT date FROM {} WHERE ticker = '{}' ORDER BY date".format(self.currency_database, quote), connection).iloc[-1].values[0]
-                # connection.close()
             elif quote in self.interests:
                 date = self.cdi.date.iloc[-1]
             elif quote in self.domestic_funds_tickers:
@@ -484,14 +472,10 @@ class Investments():
                 engine = psqlEngine(self.database)
                 connection = engine.connect()
                 if quote in self.fractions:
-                    # connection = connect(self.currency_database)
                     prices = read_sql_query("SELECT date, close FROM {} WHERE ticker = '{}' ORDER BY date".format(self.currency_database, quote), connection)
-                    # connection.close()
                     prices = self.insert_weekends(prices, asset = 'crypto')
                 elif quote in self.international_tickers:
-                    # connection = connect(self.international_database)
                     prices = read_sql_query("SELECT date, adjusted_close as close FROM {} WHERE ticker = '{}' ORDER BY date".format(self.international_database, quote), connection)
-                    # connection.close()
                     prices = self.insert_weekends(prices)
                 else:
                     prices = read_sql_query("SELECT date, close FROM domestic WHERE ticker = '{}' ORDER BY date".format(quote), connection).drop_duplicates('date')
