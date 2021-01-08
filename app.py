@@ -1,6 +1,5 @@
 #%%
 from time import sleep
-from sqlite3 import connect
 
 from pandas import DataFrame, concat, read_sql_query
 
