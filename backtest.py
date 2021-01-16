@@ -10,8 +10,6 @@ from datetime import datetime as dt
 from pandas import read_sql_query, read_csv, DataFrame, concat
 from functions import psqlEngine
 
-from investiments_copy import Investments
-
 from alpha_vantage.timeseries import TimeSeries
 
 import matplotlib.pyplot as plt
