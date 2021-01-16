@@ -1,6 +1,5 @@
 #%%
 from time import sleep
-
 from pandas import DataFrame, concat, read_sql_query
 
 from assets import Update_Assets
@@ -11,6 +10,8 @@ import matplotlib.pyplot as plt
 filename = 'database.ini'
 key = '12FCWWSQ0N28V8QV'
 quandl_key = 'yn5h-QKf33TUxixs2ex2'
+
+intraday_url = 'http://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/cotacoes/cotacoes/'
 
 #%%
 # update = Update_Assets(key = key, database = filename, asset_class = 'usa_stocks')
@@ -123,23 +124,25 @@ ax[0].pie(
     )
 p = plt.gcf()
 p.gca().add_artist(my_circle_2)
-
-ax[1].set_title('Domestic Stocks')
-ax[1].pie(
-    x = portfolio.loc['domestic stocks'].value_usd, 
-    labels = portfolio.loc['domestic stocks'].asset,
-    autopct = '%1.1f%%',
-    pctdistance = 0.80,
-    startangle = 90,
-    wedgeprops = { 'linewidth' : 7, 'edgecolor' : 'white' },
-    )
-p = plt.gcf()
-p.gca().add_artist(my_circle_3)
+try:
+    ax[1].set_title('Domestic Stocks')
+    ax[1].pie(
+        x = portfolio.loc['domestic stocks'].value_usd, 
+        labels = portfolio.loc['domestic stocks'].asset,
+        autopct = '%1.1f%%',
+        pctdistance = 0.80,
+        startangle = 90,
+        wedgeprops = { 'linewidth' : 7, 'edgecolor' : 'white' },
+        )
+    p = plt.gcf()
+    p.gca().add_artist(my_circle_3)
+except:
+    pass
 plt.tight_layout()
 plt.show()
 
 #%%
-growth_international = ['AMZN', 'ARKG', 'ARKK', 'GOOGL', 'IPOC', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'MP', 'OPEN', 'QS', 'SPCE', 'SPOT', 'TSLA', 'WORK']
+growth_international = ['AMZN', 'ARKG', 'ARKK', 'CLOV', 'GOOGL', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'MP', 'OPEN', 'QS', 'SPCE', 'SPOT', 'TSLA']
 value_international = ['IBM', 'HON']
 value_domestic = ['EGIE3', 'TAEE11', 'TIET11', 'WHRL4']
 portfolio_growth_value = portfolio.loc[~(portfolio.asset == 'domestic bonds')]
