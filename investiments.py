@@ -190,6 +190,13 @@ class Investments():
                                 price_dollar.append(price * 1.)
                         df['purchase_price'] = price_dollar
                         dictionary[ticker] = df
+                    # if (ticker in self.fractions):
+                    #     price_dollar = list()
+                    #     for price, data in zip(df.purchase_price, df.date):
+                    #         price_dollar.append(price / self.dollar_full.loc[self.dollar_full.date == data, 'close'].iloc[0])
+                    #     df['purchace_price'] = price_dollar
+                    #     dictionary[ticker] = df
+                        # print(df.purchace_price.sum())
                     df['cum_share'] = df.share.cumsum()
                     df['price_share'] = (df.purchase_price / df.share)
                     df['cum_price_share'] = df.price_share.expanding().mean()
@@ -198,6 +205,7 @@ class Investments():
                     self.stocks = concat(dictionary)
                     if directory == self.crypto_path:
                         self.crypto = concat(dictionary)
+                        # print(self.crypto)
                     if directory == self.domestic_stocks_path:
                         self.domestic_stocks = concat(dictionary)
                     if directory == self.international_stocks_path:
