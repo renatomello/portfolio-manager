@@ -1,5 +1,5 @@
 #%%
-from secret import key
+from secret import key, db_config
 
 from time import sleep
 from pandas import DataFrame, concat, read_sql_query
@@ -7,16 +7,15 @@ from pandas import DataFrame, concat, read_sql_query
 from assets import Update_Assets
 from investiments import Investments
 from functions import psqlEngine
-import matplotlib.pyplot as plt
 
-filename = 'database.ini'
+import matplotlib.pyplot as plt
 
 intraday_url = 'http://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/cotacoes/cotacoes/'
 
 #%%
-# update = Update_Assets(key = key, database = filename, asset_class = 'usa_stocks')
-update = Update_Assets(key = key, database = filename, asset_class = 'uk_stocks')
-# update = Update_Assets(key = key, database = filename, asset_class = 'currencies')
+# update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
+# update = Update_Assets(key = key, database = db_config, asset_class = 'uk_stocks')
+# update = Update_Assets(key = key, database = db_config, asset_class = 'currencies')
 
 #%%
 investments = Investments(start_date = '2020-05-01')
