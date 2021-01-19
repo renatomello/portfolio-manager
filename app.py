@@ -1,4 +1,6 @@
 #%%
+from secrets import key
+
 from time import sleep
 from pandas import DataFrame, concat, read_sql_query
 
@@ -8,8 +10,6 @@ from functions import psqlEngine
 import matplotlib.pyplot as plt
 
 filename = 'database.ini'
-key = '12FCWWSQ0N28V8QV'
-quandl_key = 'yn5h-QKf33TUxixs2ex2'
 
 intraday_url = 'http://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/cotacoes/cotacoes/'
 
