@@ -1,5 +1,5 @@
 #%%
-from secrets import key
+from secret import key
 
 from time import sleep
 from pandas import DataFrame, concat, read_sql_query
@@ -15,7 +15,7 @@ intraday_url = 'http://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dad
 
 #%%
 # update = Update_Assets(key = key, database = filename, asset_class = 'usa_stocks')
-# update = Update_Assets(key = key, database = filename, asset_class = 'uk_stocks')
+update = Update_Assets(key = key, database = filename, asset_class = 'uk_stocks')
 # update = Update_Assets(key = key, database = filename, asset_class = 'currencies')
 
 #%%

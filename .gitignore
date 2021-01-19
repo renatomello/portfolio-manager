@@ -10,4 +10,4 @@
 *.html
 *.ods
 *.odt
-secrets.py
+secret.py
