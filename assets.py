@@ -1,3 +1,4 @@
+from sys import stdout
 from time import sleep
 from sqlite3 import connect
 
@@ -117,7 +118,9 @@ class Update_Assets():
         engine.dispose()
     
     def update_fx(self, df, currency):
-        print('FX: {}'.format(currency))
+        print_string = 'FX: {}'.format(currency)
+        stdout.write('\r\x1b[K' + print_string)
+        stdout.flush()
         df = self.rename_reset(df)
         df['date'] = [elem.date().strftime('%Y-%m-%d') for elem in df.date]
         df['ticker'] = [currency]*len(df)
@@ -138,7 +141,9 @@ class Update_Assets():
         engine.dispose()
 
     def update_crypto(self, df, currency):
-        print('Crypto: {}'.format(currency))
+        print_string = 'Crypto: {}'.format(currency)
+        stdout.write('\r\x1b[K' + print_string)
+        stdout.flush()
         df = self.rename_reset(df, crypto = True)
         df['date'] = [elem.date().strftime('%Y-%m-%d') for elem in df.date]
         df['ticker'] = [currency]*len(df)
@@ -159,7 +164,9 @@ class Update_Assets():
         engine.dispose()
 
     def update_stock_database(self, ticker):
-        print('Stock: {}'.format(ticker.replace('.LON', '')))
+        print_string = 'Stock: {}'.format(ticker.replace('.LON', ''))
+        stdout.write('\r\x1b[K' + print_string)
+        stdout.flush()
         if any(letter.isdigit() for letter in ticker) == True:
             ticker = ticker + '.SA'
         if ticker in self.asset_list:
