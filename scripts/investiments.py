@@ -9,7 +9,7 @@ from pandas import DataFrame, read_sql_query, read_csv, concat
 from functions import psqlEngine
 
 class Investments():
-    def __init__(self, path = 'investments/', name = 'get_investments', **kwargs):
+    def __init__(self, path = '../investments/', name = 'get_investments', **kwargs):
         self.kwargs = kwargs
         self.path = path
         self.hyperparameters()
@@ -112,7 +112,7 @@ class Investments():
 
     def domestic_bond_returns(self):
         end = dt_date.today().strftime('%Y-%m-%d')
-        self.cdi = read_csv('interests/cdi.csv')
+        self.cdi = read_csv('../interests/cdi.csv')
         self.cdi['date'] = [dt.strptime(date, '%d/%m/%Y').strftime('%Y-%m-%d') for date in self.cdi.date]
         self.cdi['interest'] = [1 + interest / 100 for interest in self.cdi.cdi]
         total_returns_brl = 0
