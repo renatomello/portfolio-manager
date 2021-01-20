@@ -4,7 +4,7 @@ from pandas import read_table, read_sql_query
 from functions import psqlEngine
 
 directory = '/home/renato/Desktop/dados históricos/'
-db_config = 'database.ini'
+db_config, databases = 'database.ini', ['domestic', 'domestic_backup']
 
 engine = psqlEngine(db_config)
 connection = engine.connect()
@@ -26,9 +26,11 @@ for filename in listdir(directory):
         df['quatneg'] = [int(elem[152:170]) for elem in df.string.to_list()]
         df['volume'] = [int(elem[170:188]) for elem in df.string.to_list()]
         df['expiration_date'] = [elem[202:206] + '-' + elem[206:208] + '-' + elem[208:210] for elem in df.string.to_list()]
-        start_date = read_sql_query("SELECT date FROM domestic WHERE ticker = 'BOVA11' ORDER BY date DESC LIMIT 1", connection).values[0][0]
-        df = df.sort_values('ticker').loc[df.date > start_date]
-        df.to_sql('domestic', connection, if_exists = 'append', index = False)
+        for db in databases:
+            print(db)
+            start_date = read_sql_query("SELECT date FROM {} WHERE ticker = 'BOVA11' ORDER BY date DESC LIMIT 1".format(db), connection).values[0][0]
+            df = df.sort_values('ticker').loc[df.date > start_date]
+            df.to_sql('{}'.format(db), connection, if_exists = 'append', index = False)
         print('Complete')
 connection.close()
 engine.dispose()
