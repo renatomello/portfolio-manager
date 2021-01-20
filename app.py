@@ -10,8 +10,6 @@ from functions import psqlEngine
 
 import matplotlib.pyplot as plt
 
-intraday_url = 'http://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/cotacoes/cotacoes/'
-
 #%%
 # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'uk_stocks')
@@ -22,7 +20,7 @@ investments = Investments(start_date = '2020-05-01')
 portfolio, portfolio_aggregate = investments('portfolio')
 portfolio = portfolio.loc[~(portfolio.quotas == 0.)]
 dollar = investments('dollar')
-investments('save')
+# investments('save')
 time_series = investments('time_series')
 time_series
 
