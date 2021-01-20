@@ -27,10 +27,10 @@ class Update_Assets():
         self.database = self.kwargs.get('database', 'database.ini')
         self.asset_class = self.kwargs.get('asset_class', 'currencies')
 
-        self.currencies = self.kwargs.get('currencies', 'currencies.csv')
+        self.currencies = self.kwargs.get('currencies', '../support_data/currencies.csv')
         self.currencies = read_csv(self.currencies)
 
-        self.cryptos = self.kwargs.get('cryptos', 'cryptos.csv')
+        self.cryptos = self.kwargs.get('cryptos', '../support_data/cryptos.csv')
         self.cryptos = read_csv(self.cryptos)
 
         self.timer = False
