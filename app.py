@@ -1,7 +1,6 @@
 #%%
 from secret import key, db_config
 
-from time import sleep
 from pandas import DataFrame, concat, read_sql_query
 
 from assets import Update_Assets
@@ -16,7 +15,7 @@ import matplotlib.pyplot as plt
 # update = Update_Assets(key = key, database = db_config, asset_class = 'currencies')
 
 #%%
-investments = Investments(start_date = '2020-05-01')
+investments = Investments(start_date = '2020-04-01')
 portfolio, portfolio_aggregate = investments('portfolio')
 portfolio = portfolio.loc[~(portfolio.quotas == 0.)]
 dollar = investments('dollar')
