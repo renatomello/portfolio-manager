@@ -160,7 +160,7 @@ df_splits = DataFrame({
 })
 
 #%%
-tickers = ['bova11', 'petr4', 'vale3', 'itsa4', 'taee11', 'whrl3',  'bbas3', 'bbdc4', 'wege3', 'mglu3', 'egie3', 'ciel3']
+tickers = ['bova11', 'petr4', 'vale3', 'itsa4', 'taee11', 'whrl3',  'bbas3', 'bbdc4', 'egie3', 'ciel3', 'wege3', 'mglu3',]
 currency = 'BTCUSD'
 dictionary = dict()
 engine = psqlEngine(db_config)
@@ -169,12 +169,12 @@ for ticker in tickers:
     ticker = ticker.upper()
     # df = read_sql_query("SELECT date, open, high, low, close, volume FROM currencies WHERE ticker = '{}' ORDER BY date".format(currency.upper()), connection)
     df = read_sql_query("SELECT date, open, high, low, mean as avg, close, volume FROM domestic WHERE ticker = '{}' ORDER BY date".format(ticker.upper()), connection)
-    for date, split in zip(df_splits.loc[df_splits['ticker'] == ticker, 'date'], df_splits.loc[df_splits['ticker'] == ticker, 'split']):
-        df['open'] = [open_p / split for open_p in df.loc[df.date < date, 'open'].to_list()] + df.loc[df.date >= date, 'open'].to_list()
-        df['high'] = [high_p / split for high_p in df.loc[df.date < date, 'high'].to_list()] + df.loc[df.date >= date, 'high'].to_list()
-        df['low'] = [low_p / split for low_p in df.loc[df.date < date, 'low'].to_list()] + df.loc[df.date >= date, 'low'].to_list()
-        df['avg'] = [mean_p / split for mean_p in df.loc[df.date < date, 'avg'].to_list()] + df.loc[df.date >= date, 'avg'].to_list()
-        df['close'] = [open_p / split for open_p in df.loc[df.date < date, 'close'].to_list()] + df.loc[df.date >= date, 'close'].to_list()
+    # for date, split in zip(df_splits.loc[df_splits['ticker'] == ticker, 'date'], df_splits.loc[df_splits['ticker'] == ticker, 'split']):
+    #     df['open'] = [open_p / split for open_p in df.loc[df.date < date, 'open'].to_list()] + df.loc[df.date >= date, 'open'].to_list()
+    #     df['high'] = [high_p / split for high_p in df.loc[df.date < date, 'high'].to_list()] + df.loc[df.date >= date, 'high'].to_list()
+    #     df['low'] = [low_p / split for low_p in df.loc[df.date < date, 'low'].to_list()] + df.loc[df.date >= date, 'low'].to_list()
+    #     df['avg'] = [mean_p / split for mean_p in df.loc[df.date < date, 'avg'].to_list()] + df.loc[df.date >= date, 'avg'].to_list()
+    #     df['close'] = [open_p / split for open_p in df.loc[df.date < date, 'close'].to_list()] + df.loc[df.date >= date, 'close'].to_list()
         # df['quatneg'] = [quant * split for quant in df.loc[df.date < date, 'quatneg'].to_list()] + df.loc[df.date >= date, 'quatneg'].to_list()
     dictionary[ticker.lower()] = df
 connection.close()
