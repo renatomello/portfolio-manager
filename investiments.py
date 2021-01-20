@@ -424,7 +424,6 @@ class Investments():
                 date = self.domestic_funds[['date']].sort_values(by = 'date').iloc[-1].values[0]
             else:
                 date = read_sql_query("SELECT date FROM {} WHERE ticker = '{}' ORDER BY date".format(self.domestic_database, quote), connection).iloc[-1].values[0]
-            print(quote, date)
             dates.append(date)
         connection.close()
         engine.dispose()
