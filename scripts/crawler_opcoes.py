@@ -1,10 +1,11 @@
 #%%
+from sys import stdout
 from os import listdir
 from pandas import read_table, read_sql_query
 from functions import psqlEngine
 
 directory = '/home/renato/Desktop/dados históricos/'
-db_config, databases = 'database.ini', ['domestic', 'domestic_backup']
+db_config = 'database.ini'
 
 engine = psqlEngine(db_config)
 connection = engine.connect()
@@ -26,11 +27,38 @@ for filename in listdir(directory):
         df['quatneg'] = [int(elem[152:170]) for elem in df.string.to_list()]
         df['volume'] = [int(elem[170:188]) for elem in df.string.to_list()]
         df['expiration_date'] = [elem[202:206] + '-' + elem[206:208] + '-' + elem[208:210] for elem in df.string.to_list()]
-        for db in databases:
-            print(db)
-            start_date = read_sql_query("SELECT date FROM {} WHERE ticker = 'BOVA11' ORDER BY date DESC LIMIT 1".format(db), connection).values[0][0]
-            df = df.sort_values('ticker').loc[df.date > start_date]
-            df.to_sql('{}'.format(db), connection, if_exists = 'append', index = False)
-        print('Complete')
-connection.close()
-engine.dispose()
+        print('brazil_stocks')
+        start_date = read_sql_query("SELECT MAX(date) FROM brazil_stocks WHERE ticker = 'BOVA11'", connection).values[0][0]
+        df = df.sort_values('ticker').loc[df.date > start_date]
+        tickers_1 = read_sql_query("SELECT DISTINCT ticker FROM brazil_stocks WHERE LENGTH(ticker) <= 5 ORDER BY ticker", connection).ticker.to_list()
+        tickers_2 = read_sql_query("SELECT DISTINCT ticker FROM brazil_stocks WHERE LENGTH(ticker) = 6 AND (ticker LIKE '%%11' OR ticker LIKE '%%34') ORDER BY ticker", connection).ticker.to_list()
+        tickers_3 = read_sql_query("SELECT DISTINCT ticker FROM brazil_stocks WHERE LENGTH(ticker) = 6 AND ticker LIKE '%%F' ORDER BY ticker", connection).ticker.to_list()
+        tickers_4 = read_sql_query("SELECT DISTINCT ticker FROM brazil_stocks WHERE LENGTH(ticker) = 7 AND (ticker LIKE '%%11F' OR ticker LIKE '%%34F') ORDER BY ticker", connection).ticker.to_list()
+        tickers = tickers_1 + tickers_2 + tickers_3 + tickers_4
+        dataf = df.loc[df.ticker.isin(tickers)]
+        dataf.to_sql('brazil_stocks', connection, if_exists = 'append', index = False)
+        del dataf
+        print('brazil_options')
+        start_date = read_sql_query("SELECT MAX(date) FROM brazil_options", connection).values[0][0]
+        df = df.sort_values('ticker').loc[df.date > start_date]
+        df = df.loc[~df.ticker.isin(tickers)]
+        df.to_sql('brazil_options', connection, if_exists = 'append', index = False)
+print('Complete')
+# print('selecting distinct')
+# df = read_sql_query("SELECT DISTINCT ticker FROM domestic_backup WHERE LENGTH(ticker) <= 5 ORDER BY ticker", connection)
+# df = read_sql_query("SELECT DISTINCT ticker FROM domestic_backup WHERE LENGTH(ticker) = 6 AND (ticker LIKE '%%11' OR ticker LIKE '%%34') ORDER BY ticker", connection)
+# df = read_sql_query("SELECT DISTINCT ticker FROM domestic_backup WHERE LENGTH(ticker) = 6 AND ticker LIKE '%%F' ORDER BY ticker", connection)
+# df = read_sql_query("SELECT DISTINCT ticker FROM domestic_backup WHERE LENGTH(ticker) = 7 AND (ticker LIKE '%%11F' OR ticker LIKE '%%34F') ORDER BY ticker", connection)
+# print('creating new db')
+# for k, ticker in enumerate(df.ticker):
+#     print_string = '{:.2f}%  {}'.format(100*(k+1)/len(df), ticker)
+#     stdout.write('\r\x1b[K' + print_string)
+#     stdout.flush()
+#     dataf = read_sql_query("SELECT * FROM domestic_backup WHERE ticker = '{}' ORDER BY date".format(ticker), connection)
+#     dataf.to_sql('brazil_stocks', engine, if_exists = 'append', index = False)
+# cursor = connection.cursor()
+# cursor.execute("DELETE FROM domestic_backup WHERE ticker = '{}'".format(ticker))
+# cursor.execute('ALTER TABLE domestic_backup RENAME TO brazil_options')
+# connection.commit()
+# connection.close()
+# engine.dispose()
