@@ -8,16 +8,13 @@ from numpy import max as np_max
 from numpy import abs as np_abs
 from datetime import datetime as dt
 from pandas import read_sql_query, read_csv, DataFrame, concat
+from secret import db_config
+from secret import key_renato as key
 from functions import psqlEngine
 
 from alpha_vantage.timeseries import TimeSeries
 
 import matplotlib.pyplot as plt
-
-db_config = 'database.ini'
-key = '12FCWWSQ0N28V8QV'
-binance_api_key = 'Y6Db2xbHp4YTi7deLSczDCBQ7kb3UufPqYpJsjy5bkg18yqRhZJzwZIe61E6oapy'
-binance_api_secret = 'FGGnKdkClmdWKXA2mGTqHZ7MsrZMfuu3d16aNTNuODREA5bhvPOknke1PiRt9IgO'
 
 # #%%
 # def get_returns(df, reference, flag = 'cumulative'):
@@ -136,39 +133,39 @@ def strategy(df, threshold: float):
     final_positions = DataFrame(sell_long, columns = columns_final).append(DataFrame(buy_short, columns = columns_final))
     return initial_positions, final_positions
 
-ticker_splits = [
-    'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'TAEE11', 
-    'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'WEGE3', 'WEGE3', 'WEGE3', 'MGLU3', 
-    'MGLU3', 'MGLU3', 'MGLU3', 'EGIE3', 'CIEL3', 'CIEL3', 'CIEL3','CIEL3', 'CIEL3', 'CIEL3', 
-]
-splits = [
-    1.1, 1.1, 1.1, 1.008, 1.004, 1.1, 1.002, 1.1, 1.1, 1.007, 1.011, 1.1, 3, 1.1, 1.2, 1.005, 1.1, 1.1, 1.1, 1.1, 1.2,
-    1.1, 1.3, 2, 1.3, 1./8, 8, 8, 4, 1.25, 1.2, 1.2, 2, 1.2, 1.2, 1.2
-]
-dates_split = [
-    '2012-04-26', '2012-04-27', '2013-05-02', '2013-05-08', '2014-02-19', '2014-05-05', '2015-02-11' ,'2015-05-05', 
-    '2016-05-02', '2017-02-21', '2018-02-23', '2018-06-01', '2012-12-05', '2013-03-26', '2015-03-27', '2015-12-18',
-    '2016-04-18', '2017-05-02', '2018-03-28', '2018-04-02', '2019-04-01', '2020-04-14', '2014-04-24', '2015-04-01',
-    '2018-04-25', '2015-10-01', '2017-09-05', '2019-08-06', '2020-10-14', '2018-12-12', '2012-04-23', '2013-04-29',
-    '2014-04-01', '2015-04-13', '2016-04-11', '2017-04-13', 
-]
+# ticker_splits = [
+#     'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'ITSA4', 'TAEE11', 
+#     'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'BBDC4', 'WEGE3', 'WEGE3', 'WEGE3', 'MGLU3', 
+#     'MGLU3', 'MGLU3', 'MGLU3', 'EGIE3', 'CIEL3', 'CIEL3', 'CIEL3','CIEL3', 'CIEL3', 'CIEL3', 
+# ]
+# splits = [
+#     1.1, 1.1, 1.1, 1.008, 1.004, 1.1, 1.002, 1.1, 1.1, 1.007, 1.011, 1.1, 3, 1.1, 1.2, 1.005, 1.1, 1.1, 1.1, 1.1, 1.2,
+#     1.1, 1.3, 2, 1.3, 1./8, 8, 8, 4, 1.25, 1.2, 1.2, 2, 1.2, 1.2, 1.2
+# ]
+# dates_split = [
+#     '2012-04-26', '2012-04-27', '2013-05-02', '2013-05-08', '2014-02-19', '2014-05-05', '2015-02-11' ,'2015-05-05', 
+#     '2016-05-02', '2017-02-21', '2018-02-23', '2018-06-01', '2012-12-05', '2013-03-26', '2015-03-27', '2015-12-18',
+#     '2016-04-18', '2017-05-02', '2018-03-28', '2018-04-02', '2019-04-01', '2020-04-14', '2014-04-24', '2015-04-01',
+#     '2018-04-25', '2015-10-01', '2017-09-05', '2019-08-06', '2020-10-14', '2018-12-12', '2012-04-23', '2013-04-29',
+#     '2014-04-01', '2015-04-13', '2016-04-11', '2017-04-13', 
+# ]
 
-df_splits = DataFrame({
-    'date': dates_split,
-    'ticker': ticker_splits,
-    'split': splits,
-})
+# df_splits = DataFrame({
+#     'date': dates_split,
+#     'ticker': ticker_splits,
+#     'split': splits,
+# })
 
 #%%
-tickers = ['bova11', 'petr4', 'vale3', 'itsa4', 'taee11', 'whrl3',  'bbas3', 'bbdc4', 'egie3', 'ciel3', 'wege3', 'mglu3',]
-currency = 'BTCUSD'
+tickers = ['bova11', 'itsa4',]
+# currency = 'BTCUSD'
 dictionary = dict()
 engine = psqlEngine(db_config)
 connection = engine.connect()
 for ticker in tickers:
     ticker = ticker.upper()
     # df = read_sql_query("SELECT date, open, high, low, close, volume FROM currencies WHERE ticker = '{}' ORDER BY date".format(currency.upper()), connection)
-    df = read_sql_query("SELECT date, open, high, low, mean as avg, close, volume FROM domestic WHERE ticker = '{}' ORDER BY date".format(ticker.upper()), connection)
+    df = read_sql_query("SELECT date, adjusted_open as open, adjusted_high as high, adjusted_low as low, adjusted_mean as avg, adjusted_close as close, volume FROM brazil_stocks WHERE ticker = '{}' ORDER BY date".format(ticker.upper()), connection)
     # for date, split in zip(df_splits.loc[df_splits['ticker'] == ticker, 'date'], df_splits.loc[df_splits['ticker'] == ticker, 'split']):
     #     df['open'] = [open_p / split for open_p in df.loc[df.date < date, 'open'].to_list()] + df.loc[df.date >= date, 'open'].to_list()
     #     df['high'] = [high_p / split for high_p in df.loc[df.date < date, 'high'].to_list()] + df.loc[df.date >= date, 'high'].to_list()
@@ -192,17 +189,23 @@ for ticker in df.index.unique():
 start_date = DataFrame(min_dates).max(axis = 1).values[0]
 df = df.loc[df.date >= start_date]
 df.reset_index(inplace = True)
+df['open'] = df.open.astype('float')
+df['high'] = df.high.astype('float')
+df['low'] = df.low.astype('float')
+df['avg'] = df.avg.astype('float')
+df['close'] = df.close.astype('float')
+df['volume'] = df.volume.astype('float')
 
-#%%
-ticker = tickers[-1]
-dates = df.loc[df['ticker'] == ticker, 'date'].to_list()
-close = df.loc[df['ticker'] == ticker, 'close'].to_list()
-ticks = [dates[k] for k in range(0, len(dates), 150)]
-plt.figure(figsize=(10, 6))
-plt.plot(dates, close)
-plt.xticks(ticks, rotation = '90')
-plt.tight_layout()
-plt.show()
+# #%%
+# ticker = tickers[0]
+# dates = df.loc[df['ticker'] == ticker, 'date'].to_list()
+# close = df.loc[df['ticker'] == ticker, 'close'].astype('float').to_list()
+# ticks = [dates[k] for k in range(0, len(dates), 25)]
+# plt.figure(figsize=(10, 6))
+# plt.plot(dates, close)
+# plt.xticks(ticks, rotation = '90')
+# plt.tight_layout()
+# plt.show()
 
 #%%
 mf, mfm, tr, atr = list(), list(), list(), list()
@@ -268,6 +271,19 @@ plt.tight_layout()
 plt.show()
 # ax = test_2[['date', 'returns']].set_index('date').plot(figsize = (10,5), title = 'Portfolio Returns')
 # ax.set_ylabel('Cumulative Returns (%)')
+
+#%%
+dates = test_2.date.to_list()
+plots = [1000] + list(1000 * (1 + test_2.returns.iloc[1:]).fillna(1).cumprod())
+
+plt.figure(figsize=(10, 6))
+plt.plot(dates, plots)
+ticks = [test_2.date.iloc[k] for k in range(0, len(test_2), 30)]
+plt.title('Full Portfolio')
+plt.ylabel('Cumulative Portfolio (R$)')
+plt.xticks(ticks, rotation = '90')
+plt.tight_layout()
+plt.show()
 
 #%%
 (final_positions.trade_type.loc[final_positions.trade_type == 'profit'].count() / len(final_positions)).round(3)
