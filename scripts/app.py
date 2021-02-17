@@ -1,11 +1,12 @@
 #%%
-from secret import key, db_config
+from datetime import date
+from secret import db_config
+from secret import key_felipe as key
 
-from pandas import DataFrame, concat, read_sql_query
+from pandas import DataFrame, concat
 
 from assets import Update_Assets
 from investiments import Investments
-from functions import psqlEngine
 
 import matplotlib.pyplot as plt
 
@@ -13,11 +14,11 @@ import matplotlib.pyplot as plt
 # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'uk_stocks')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'currencies')
+# update = Update_Assets(key = key, asset_class = 'benchmarks')
 
 #%%
 investments = Investments(start_date = '2020-04-01')
 portfolio, portfolio_aggregate = investments('portfolio')
-portfolio = portfolio.loc[~(portfolio.quotas == 0.)]
 dollar = investments('dollar')
 # investments('save')
 time_series = investments('time_series')
@@ -138,7 +139,7 @@ plt.tight_layout()
 plt.show()
 
 #%%
-growth_international = ['AMZN', 'ARKG', 'ARKK', 'CLOV', 'GOOGL', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'MP', 'OPEN', 'QS', 'SPCE', 'SPOT', 'TSLA']
+growth_international = ['AMZN', 'ARKG', 'ARKK', 'dataf', 'GOOGL', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'MP', 'OPEN', 'QS', 'SPCE', 'SPOT', 'TSLA']
 value_international = ['IBM', 'HON']
 value_domestic = ['EGIE3', 'TAEE11', 'TIET11', 'WHRL4']
 portfolio_growth_value = portfolio.loc[~(portfolio.asset == 'domestic bonds')]
