@@ -1,21 +1,37 @@
 #%%
+from time import sleep, time
+from os import listdir
+from functions import psqlEngine
+from secret import db_config, intraday_av, key_renato as key
+from pandas import read_sql_query, read_csv
 
 #%%
 # dataframe = read_csv('../extended_intraday_dataf_15min_year1month1_adjusted.csv')
-engine = psqlEngine(db_config)
-connection = engine.connect()
+# engine = psqlEngine(db_config)
+# connection = engine.connect()
 # tickers = ['clov']
 # tickers = ['amzn', 'intc', 'ipod-u', 'ipoe-u', 'ipof-u', 'spot']
-tickers = read_sql_query("SELECT DISTINCT ticker FROM usa_stocks ORDER BY ticker", connection).ticker.to_list()
-connection.close()
-engine.dispose()
+# tickers = read_sql_query("SELECT DISTINCT ticker FROM usa_stocks ORDER BY ticker", connection).ticker.to_list()
+# connection.close()
+# engine.dispose()
+
+#%%
 timeline = 'year1month1'
+path = '../intraday_files/{}/'.format(timeline)
+tickers = list()
+for stock in listdir(path):
+    ticker = stock.split('_')[0]
+    tickers.append(ticker)
+tickers.sort()
+
+#%%
+# timeline = 'year2month9'
 for ticker in tickers:
     print(ticker.upper())
     # dataframe = read_csv('../intraday_files/{}.csv'.format(timeline))#, '1min', timeline, key))
     dataframe = read_csv(intraday_av.format(ticker.upper(), '1min', timeline, key))
     # dataframe.to_csv('../intraday_files/{}.csv'.format(timeline))#, ticker.upper(), '1min', timeline, key))
-    dataframe.to_csv('../intraday_files/{}/{}_{}_{}.csv'.format(timeline, ticker.upper(), '1min', timeline, key))
+    dataframe.to_csv(path + '{}_{}_{}.csv'.format(ticker.upper(), '1min', timeline))
     # dataframe.rename(columns = {'time': 'datetime'}, inplace = True)
     # dataframe['date'] = [data.split(' ')[0] for data in dataframe.datetime]
     # dataframe['time'] = [data.split(' ')[1] for data in dataframe.datetime]
