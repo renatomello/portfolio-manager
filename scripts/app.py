@@ -1,6 +1,7 @@
 #%%
-from datetime import date
-from secret import db_config
+from datetime import date, datetime as dt
+from os import read
+from secret import db_config, yfinance_url
 from secret import key_felipe as key
 
 from pandas import DataFrame, concat
@@ -10,11 +11,28 @@ from investiments import Investments
 
 import matplotlib.pyplot as plt
 
+from functions import psqlEngine
+
+from pandas import read_csv
+from secret import quandl_key, quandl_url
+
+# #%%
+# from pandas import read_sql_query
+# engine = psqlEngine(db_config)
+# connection = engine.raw_connection()
+# tickers = read_sql_query("SELECT DISTINCT ticker FROM currencies ORDER BY ticker", connection).ticker.to_list()
+# # df = read_sql_query("SELECT * FROM currencies WHERE ticker = 'BRLUSD' ORDER BY date", connection)
+# # df.to_sql('benchmarks', engine, if_exists = 'append', index = False)
+# # df = read_sql_query("SELECT * FROM brazil_stocks WHERE ticker = 'BOVA11' ORDER BY date", connection)
+# # df.to_sql('benchmarks', engine, if_exists = 'append', index = False)
+# connection.close()
+# engine.dispose()
+
 #%%
 # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'uk_stocks')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'currencies')
-# update = Update_Assets(key = key, asset_class = 'benchmarks')
+# update = Update_Assets(key = key, database = db_config, asset_class = 'benchmarks')
 
 #%%
 investments = Investments(start_date = '2020-04-01')
@@ -32,8 +50,8 @@ y2 = time_series.return_port_bench
 
 fig, ax = plt.subplots(1, figsize = (8, 5))
 fig.tight_layout()
-ax.plot(x, y1, label = 'Portfolio')
-ax.plot(x, y2, label = '60/40 portfolio')
+ax.plot(x, y1, label = 'Portfolio - CAGR = {:.1f}%'.format(time_series.cagr_portfolio.iloc[-1]))
+ax.plot(x, y2, label = '60/40 portfolio - CAGR = {:.1f}%'.format(time_series.cagr_port_bench.iloc[-1]))
 
 leg = plt.legend(loc = 'upper left', frameon = False)
 for text in leg.get_texts():
@@ -44,26 +62,26 @@ plt.xticks(date_plot)
 plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
 plt.show()
 
-#%%
-start = 60
-x = time_series.index[-start:]
-date_plot = [x[k] for k in range(0, len(x), 11)]
-y1 = time_series.cagr_portfolio.iloc[-start:]
-y2 = time_series.cagr_port_bench.iloc[-start:]
+# #%%
+# start = 60
+# x = time_series.index[-start:]
+# date_plot = [x[k] for k in range(0, len(x), 11)]
+# y1 = time_series.cagr_portfolio.iloc[-start:]
+# y2 = time_series.cagr_port_bench.iloc[-start:]
 
-fig, ax = plt.subplots(1, figsize = (8, 5))
-fig.tight_layout()
-ax.plot(x, y1, label = 'Portfolio')
-ax.plot(x, y2, label = '60/40 portfolio')
+# fig, ax = plt.subplots(1, figsize = (8, 5))
+# fig.tight_layout()
+# ax.plot(x, y1, label = 'Portfolio')
+# ax.plot(x, y2, label = '60/40 portfolio')
 
-leg = plt.legend(loc = 'upper left', frameon = False)
-for text in leg.get_texts():
-    plt.setp(text, color = 'black')
+# leg = plt.legend(loc = 'upper left', frameon = False)
+# for text in leg.get_texts():
+#     plt.setp(text, color = 'black')
 
-ax.set_ylabel('DCF CAGR (%)')
-plt.xticks(date_plot)
-plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
-plt.show()
+# ax.set_ylabel('DCF CAGR (%)')
+# plt.xticks(date_plot)
+# plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
+# plt.show()
 
 #%%
 x = time_series.index
@@ -83,7 +101,7 @@ for text in leg.get_texts():
 ax.set_ylabel('Valuation of Assets (USD)')
 plt.xticks(date_plot)
 plt.setp(ax.xaxis.get_majorticklabels(), rotation = 90)
-plt.savefig('plot.png', bbox_inches = 'tight')
+# plt.savefig('plot.png', bbox_inches = 'tight')
 plt.show()
 
 #%%
