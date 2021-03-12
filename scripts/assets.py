@@ -1,8 +1,9 @@
+from os import listdir
 from sys import stdout
 from time import sleep
 from sqlite3 import connect
 
-from pandas import read_sql_query, read_csv
+from pandas import read_sql_query, read_csv, read_table
 
 from alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.cryptocurrencies import CryptoCurrencies
@@ -37,6 +38,8 @@ class Update_Assets():
         self.cryptos = read_csv(self.cryptos)
 
         self.timer = False
+
+        self.directory = self.kwargs.get('directory', '/home/renato/Desktop/dados históricos/')
     
 
     def get_connection(self):
@@ -96,9 +99,9 @@ class Update_Assets():
     def rename_reset(self, df, crypto = False):
         keys = list(df.columns)
         if crypto == False:
-            values = [item[3:].replace(' ', '_') for item in list(df.columns)]
+            values = [item[3:].replace(' ', '_') for item in keys]
         if crypto == True:
-            values = [item[3:].replace(' (USD)', '').replace(' ', '_') for item in list(df.columns)]
+            values = [item[3:].replace(' (USD)', '').replace(' ', '_') for item in keys]
             for k, item in enumerate(values):
                 if item.startswith('_'):
                     values[k] = item.replace('_', '')
@@ -111,12 +114,41 @@ class Update_Assets():
 
     def update_benchmarks(self):
         print('\nBenchmarks\n')
+        list_of_B3_files = listdir(self.directory)
+        for filename in list_of_B3_files:
+            if (filename.endswith('.TXT')) and (filename.contains('2021')):
+                df = read_table(self.directory + filename, encoding = 'ISO-8859-1').iloc[:-1].reset_index()
+                df.rename(columns = {df.columns[1]: 'string'}, inplace = True)
+                df.drop('index', axis = 1, inplace = True)
+                df['date'] = [elem[2:6] + '-' + elem[6:8] + '-' + elem[8:10] for elem in df.string.to_list()]
+                df['ticker'] = [elem[12:24].replace(' ', '') for elem in df.string.to_list()]
+                df['currency'] = [elem[52:56].replace('R$', 'BRL') for elem in df.string.to_list()]
+                df['open'] = [int(elem[56:69]) / 100 for elem in df.string.to_list()]
+                df['high'] = [int(elem[69:82]) / 100 for elem in df.string.to_list()]
+                df['low'] = [int(elem[82:95]) / 100 for elem in df.string.to_list()]
+                df['mean'] = [int(elem[95:108]) / 100 for elem in df.string.to_list()]
+                df['close'] = [int(elem[108:121]) / 100 for elem in df.string.to_list()]
+                df['totneg'] = [int(elem[147:152]) for elem in df.string.to_list()]
+                df['quatneg'] = [int(elem[152:170]) for elem in df.string.to_list()]
+                df['volume'] = [int(elem[170:188]) for elem in df.string.to_list()]
+                df['expiration_date'] = [elem[202:206] + '-' + elem[206:208] + '-' + elem[208:210] for elem in df.string.to_list()]
+                df['split_numerator'] = [1.] * len(df)
+                df['split_denominator'] = [1.] * len(df)
+                df['adjusted_open'] = df.open.to_list()
+                df['adjusted_high'] = df.high.to_list()
+                df['adjusted_low'] = df.low.to_list()
+                df['adjusted_mean'] = df['mean'].to_list()
+                df['adjusted_close'] = df.close.to_list()
+                start_date = read_sql_query("SELECT MAX(date) FROM benchmarks WHERE ticker = 'BOVA11'", self.connection).values[0][0]
+                dataf = df.loc[(df.date > start_date) & (df.ticker == 'BOVA11')]
+                dataf.to_sql('benchmarks', self.connection, if_exists = 'append', index = False)
+                del df, start_date, dataf
         start_date = read_sql_query("SELECT MAX(date) FROM benchmarks WHERE ticker = '{}'".format('BRLUSD'), self.connection).values[0][0]
         df = read_sql_query("SELECT * FROM currencies WHERE ticker = '{}' AND date > '{}' ORDER BY date".format('BRLUSD', start_date), self.connection)
         df.to_sql('benchmarks', self.engine, if_exists='append', index = False)
         start_date = read_sql_query("SELECT MAX(date) FROM benchmarks WHERE ticker = '{}'".format('SPY'), self.connection).values[0][0]
         df = read_sql_query("SELECT * FROM usa_stocks WHERE ticker = '{}' AND date > '{}' ORDER BY date".format('SPY', start_date), self.connection)
-        df.to_sql('benchmarks', self.engine, if_exists='append', index = False)
+        df.to_sql('benchmarks', self.engine, if_exists = 'append', index = False)
 
 
     def update_stocks(self, dataframe, ticker, flag):
@@ -204,7 +236,7 @@ class Update_Assets():
 
     def update_asset_database(self):
         print('\nUpdating database...')
-        if self.asset == ['BENCHMARKS']:
+        if self.asset_class == 'benchmarks':
             self.update_benchmarks()
         else:
             for ticker in self.asset:
