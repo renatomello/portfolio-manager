@@ -116,7 +116,7 @@ class Update_Assets():
         print('\nBenchmarks\n')
         list_of_B3_files = listdir(self.directory)
         for filename in list_of_B3_files:
-            if (filename.endswith('.TXT')) and (filename.contains('2021')):
+            if (filename.endswith('.TXT')) and ('2021' in filename):
                 df = read_table(self.directory + filename, encoding = 'ISO-8859-1').iloc[:-1].reset_index()
                 df.rename(columns = {df.columns[1]: 'string'}, inplace = True)
                 df.drop('index', axis = 1, inplace = True)
@@ -141,7 +141,7 @@ class Update_Assets():
                 df['adjusted_close'] = df.close.to_list()
                 start_date = read_sql_query("SELECT MAX(date) FROM benchmarks WHERE ticker = 'BOVA11'", self.connection).values[0][0]
                 dataf = df.loc[(df.date > start_date) & (df.ticker == 'BOVA11')]
-                dataf.to_sql('benchmarks', self.connection, if_exists = 'append', index = False)
+                dataf.to_sql('benchmarks', self.engine, if_exists = 'append', index = False)
                 del df, start_date, dataf
         start_date = read_sql_query("SELECT MAX(date) FROM benchmarks WHERE ticker = '{}'".format('BRLUSD'), self.connection).values[0][0]
         df = read_sql_query("SELECT * FROM currencies WHERE ticker = '{}' AND date > '{}' ORDER BY date".format('BRLUSD', start_date), self.connection)
@@ -192,9 +192,14 @@ class Update_Assets():
         print_string = 'Crypto: {}'.format(currency)
         stdout.write('\r\x1b[K' + print_string)
         stdout.flush()
-        df = self.rename_reset(df, crypto = True)
+        df = self.rename_reset(df, crypto = True).copy()
         df['date'] = [elem.date().strftime('%Y-%m-%d') for elem in df.date]
         df['ticker'] = [currency]*len(df)
+        if currency.endswith('BRL'):
+            values = [item.replace('(BRL)', '') for item in list(df.columns)]
+            dictionary = dict(zip(list(df.columns), values))
+            df.rename(columns = dictionary, inplace = True)
+            df = df.loc[:, ~df.columns.duplicated()]
         if currency not in self.crypto_list:
             df.to_sql(self.asset_class, self.engine, if_exists = 'append', index = False)
         if currency in self.crypto_list:
@@ -248,4 +253,4 @@ class Update_Assets():
                     self.update_crypto_database(currency_from = currency_from, currency_to = currency_to)
                 else:
                     self.update_stock_database(ticker)
-                sleep(15.1)
+                if len(self.asset) > 1: sleep(15.1)

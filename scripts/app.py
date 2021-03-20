@@ -1,10 +1,12 @@
 #%%
 from datetime import date, datetime as dt
 from os import read
-from secret import db_config, yfinance_url
-from secret import key_felipe as key
 
-from pandas import DataFrame, concat
+from pandas.io.sql import read_sql_query
+from secret import db_config, yfinance_url
+from secret import key_renato as key
+
+from pandas import DataFrame, concat, read_sql_query
 
 from assets import Update_Assets
 from investiments import Investments
@@ -13,20 +15,13 @@ import matplotlib.pyplot as plt
 
 from functions import psqlEngine
 
-from pandas import read_csv
-from secret import quandl_key, quandl_url
-
 # #%%
-# from pandas import read_sql_query
 # engine = psqlEngine(db_config)
 # connection = engine.raw_connection()
 # tickers = read_sql_query("SELECT DISTINCT ticker FROM currencies ORDER BY ticker", connection).ticker.to_list()
-# # df = read_sql_query("SELECT * FROM currencies WHERE ticker = 'BRLUSD' ORDER BY date", connection)
-# # df.to_sql('benchmarks', engine, if_exists = 'append', index = False)
-# # df = read_sql_query("SELECT * FROM brazil_stocks WHERE ticker = 'BOVA11' ORDER BY date", connection)
-# # df.to_sql('benchmarks', engine, if_exists = 'append', index = False)
 # connection.close()
 # engine.dispose()
+# tickers
 
 #%%
 # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
@@ -157,7 +152,7 @@ plt.tight_layout()
 plt.show()
 
 #%%
-growth_international = ['AMZN', 'ARKG', 'ARKK', 'dataf', 'GOOGL', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'MP', 'OPEN', 'QS', 'SPCE', 'SPOT', 'TSLA']
+growth_international = ['AMZN', 'API', 'ARKF', 'ARKG', 'ARKK', 'dataf', 'GOOGL', 'IPOD-U', 'IPOE-U', 'IPOF-U', 'MP', 'OPEN', 'QS', 'SPCE', 'SPOT', 'TSLA']
 value_international = ['IBM', 'HON']
 value_domestic = ['EGIE3', 'TAEE11', 'TIET11', 'WHRL4']
 portfolio_growth_value = portfolio.loc[~(portfolio.asset == 'domestic bonds')]
