@@ -34,10 +34,6 @@ for filename in listdir(directory):
         df['adjusted_low'] = df.low.to_list()
         df['adjusted_mean'] = df['mean'].to_list()
         df['adjusted_close'] = df.close.to_list()
-        # print('benchmark')
-        # start_date = read_sql_query("SELECT MAX(date) FROM benchmarks WHERE ticker = 'BOVA11'", connection).values[0][0]
-        # dataf = df.loc[(df.date > start_date) & (df.ticker == 'BOVA11')]
-        # dataf.to_sql('benchmarks', connection, if_exists = 'append', index = False)
         print('brazil_stocks')
         start_date = read_sql_query("SELECT MAX(date) FROM brazil_stocks WHERE ticker = 'BOVA11'", connection).values[0][0]
         df = df.sort_values('ticker').loc[df.date > start_date]
@@ -53,7 +49,6 @@ for filename in listdir(directory):
         start_date = read_sql_query("SELECT MAX(date) FROM brazil_options", connection).values[0][0]
         df = df.sort_values('ticker').loc[df.date > start_date]
         df = df.loc[~df.ticker.isin(tickers)]
-        # df.sort_values(['ticker', 'date'], inplace = True)
         df.to_sql('brazil_options', connection, if_exists = 'append', index = False)
 print('Complete')
 connection.close()
