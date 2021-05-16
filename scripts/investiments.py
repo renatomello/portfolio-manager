@@ -40,7 +40,7 @@ class Investments():
         if flag == 'crypto':
             return self.crypto, self.fractions
         if flag == 'portfolio':
-            return self.portfolio.round(2), self.portfolio_aggregate.round(2)
+            return self.portfolio, self.portfolio_aggregate.round(2)
         if flag == 'save':
             rounded = self.portfolio.round(2)
             rounded2 = self.portfolio_aggregate.round(2)
