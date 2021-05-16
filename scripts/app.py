@@ -2,11 +2,10 @@
 from datetime import date, datetime as dt
 from os import read
 
-from pandas.io.sql import read_sql_query
-from secret import db_config, yfinance_url
-from secret import key_renato as key
-
 from pandas import DataFrame, concat, read_sql_query
+
+from secret import db_config
+from secret import key_renato as key
 
 from assets import Update_Assets
 from investiments import Investments
@@ -18,10 +17,10 @@ from functions import psqlEngine
 # #%%
 # engine = psqlEngine(db_config)
 # connection = engine.raw_connection()
-# tickers = read_sql_query("SELECT DISTINCT ticker FROM currencies ORDER BY ticker", connection).ticker.to_list()
+# tickers = read_sql_query("SELECT DISTINCT ticker FROM usa_stocks ORDER BY ticker", connection).ticker.to_list()
 # connection.close()
 # engine.dispose()
-# tickers
+# tickers[180:]
 
 #%%
 # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
@@ -33,7 +32,7 @@ from functions import psqlEngine
 investments = Investments(start_date = '2020-04-01')
 portfolio, portfolio_aggregate = investments('portfolio')
 dollar = investments('dollar')
-# investments('save')
+investments('save')
 time_series = investments('time_series')
 time_series
 
@@ -134,20 +133,31 @@ ax[0].pie(
     )
 p = plt.gcf()
 p.gca().add_artist(my_circle_2)
-try:
-    ax[1].set_title('Domestic Stocks')
-    ax[1].pie(
-        x = portfolio.loc['domestic stocks'].value_usd, 
-        labels = portfolio.loc['domestic stocks'].asset,
-        autopct = '%1.1f%%',
-        pctdistance = 0.80,
-        startangle = 90,
-        wedgeprops = { 'linewidth' : 7, 'edgecolor' : 'white' },
-        )
-    p = plt.gcf()
-    p.gca().add_artist(my_circle_3)
-except:
-    pass
+# try:
+#     ax[1].set_title('Domestic Stocks')
+#     ax[1].pie(
+#         x = portfolio.loc['domestic stocks'].value_usd, 
+#         labels = portfolio.loc['domestic stocks'].asset,
+#         autopct = '%1.1f%%',
+#         pctdistance = 0.80,
+#         startangle = 90,
+#         wedgeprops = { 'linewidth' : 7, 'edgecolor' : 'white' },
+#         )
+#     p = plt.gcf()
+#     p.gca().add_artist(my_circle_3)
+# except:
+#     pass
+ax[1].set_title('Crypto assets')
+ax[1].pie(
+    x = portfolio.loc['crypto'].value_usd,
+    labels = portfolio.loc['crypto'].asset,
+    autopct = '%1.1f%%',
+    pctdistance = 0.80,
+    startangle = 90,
+    wedgeprops = { 'linewidth' : 7, 'edgecolor' : 'white' },
+)
+p = plt.gcf()
+p.gca().add_artist(my_circle_3)
 plt.tight_layout()
 plt.show()
 
@@ -167,11 +177,12 @@ for index in portfolio_growth_value.index.unique(0):
             barbell.append('value')
         else:
             barbell.append('others')
-    aux['barbell'] = barbell
-    df = concat([df, aux])
-    del aux
-portfolio_growth_value = df
-del df
+    # aux['barbell'] = barbell
+    portfolio_growth_value.loc[index, 'barbell'] = barbell
+    # df = concat([df, aux])
+    # del aux
+# portfolio_growth_value = df
+# del df
 
 plt.pie(
     x = portfolio_growth_value.groupby('barbell').sum()[['value_usd']], 
@@ -186,6 +197,9 @@ p.gca().add_artist(my_circle_4)
 plt.title('Barbell Strategy')
 plt.tight_layout()
 plt.show()
+
+#%%
+portfolio_growth_value
 
 #%%
 plt.pie(
