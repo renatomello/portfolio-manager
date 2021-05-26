@@ -4,8 +4,7 @@ from os import read
 
 from pandas import DataFrame, concat, read_sql_query
 
-from secret import db_config
-from secret import key_renato as key
+from secret import db_config, key_renato as key
 
 from assets import Update_Assets
 from investiments import Investments
@@ -17,10 +16,10 @@ from functions import psqlEngine
 # #%%
 # engine = psqlEngine(db_config)
 # connection = engine.raw_connection()
-# tickers = read_sql_query("SELECT DISTINCT ticker FROM usa_stocks ORDER BY ticker", connection).ticker.to_list()
+# tickers = read_sql_query("SELECT DISTINCT ticker FROM currencies ORDER BY ticker", connection).ticker.to_list()
 # connection.close()
 # engine.dispose()
-# tickers[180:]
+# tickers[40:]
 
 #%%
 # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
