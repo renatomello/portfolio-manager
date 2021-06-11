@@ -238,7 +238,7 @@ def generate_conditional_order(symbol_from, symbol_to, symbol_order, side = SIDE
 #%%
 # generate_order('BRL', 'ADA')
 # generate_order('BRL', 'BTC')
-generate_order('BRL', 'BUSD')
+# generate_order('BRL', 'BUSD')
 # generate_conditional_order('BUSD', 'BTC', 'BRL')
 # sleep(4 * SECONDS_IN_HOUR)
 # generate_conditional_order('BTC', 'BRL', 'BUSD', side = SIDE_SELL)

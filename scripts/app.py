@@ -16,10 +16,10 @@ from functions import psqlEngine
 # #%%
 # engine = psqlEngine(db_config)
 # connection = engine.raw_connection()
-# tickers = read_sql_query("SELECT DISTINCT ticker FROM usa_stocks ORDER BY ticker", connection).ticker.to_list()
+# tickers = read_sql_query("SELECT DISTINCT ticker FROM currencies ORDER BY ticker", connection).ticker.to_list()
 # connection.close()
 # engine.dispose()
-# tickers[107:]
+# tickers
 
 #%%
 # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
