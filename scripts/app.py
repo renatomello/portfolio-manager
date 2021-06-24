@@ -2,7 +2,7 @@
 from datetime import date, datetime as dt
 from os import read
 
-from pandas import DataFrame, concat, read_sql_query
+from pandas import DataFrame, concat, read_sql_query, read_csv
 
 from secret import db_config, key_felipe as key
 
@@ -14,15 +14,32 @@ import matplotlib.pyplot as plt
 from functions import psqlEngine
 
 # #%%
+# def row_count(input):
+#     with open(input) as f:
+#         for i, l in enumerate(f):
+#             pass
+#     return i
+
+# table = '/home/renato/Desktop/usa_stocks_intraday_5min_A-M.csv'
+# end = row_count(table)
+# end
+
+# #%%
 # engine = psqlEngine(db_config)
 # connection = engine.raw_connection()
-# tickers = read_sql_query("SELECT DISTINCT ticker FROM currencies ORDER BY ticker", connection).ticker.to_list()
+
+# # table = 'usa_stocks_intraday_5min_A-M'
+# # df = read_csv('/home/renato/Desktop/{}.csv'.format(table), skiprows = [1000000, end])
+# df = read_sql_query('SELECT DISTINCT ticker FROM usa_stocks ORDER BY ticker', connection).ticker.to_list()
+# # df.to_sql(table.replace('_A-M', '').replace('_N-Z', ''), engine, if_exists = 'replace', index = False)
+
 # connection.close()
 # engine.dispose()
-# tickers
+# # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks', asset = df[40:])
+# df[103:]
 
 #%%
-# update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
+# update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks'])
 # update = Update_Assets(key = key, database = db_config, asset_class = 'uk_stocks')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'currencies')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'benchmarks')
