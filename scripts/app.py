@@ -39,7 +39,7 @@ from functions import psqlEngine
 # df[103:]
 
 #%%
-# update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks'])
+# update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'uk_stocks')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'currencies')
 # update = Update_Assets(key = key, database = db_config, asset_class = 'benchmarks')
