@@ -30,13 +30,13 @@ from functions import psqlEngine
 
 # # table = 'usa_stocks_intraday_5min_A-M'
 # # df = read_csv('/home/renato/Desktop/{}.csv'.format(table), skiprows = [1000000, end])
-# df = read_sql_query('SELECT DISTINCT ticker FROM usa_stocks ORDER BY ticker', connection).ticker.to_list()
+# df = read_sql_query('SELECT DISTINCT ticker FROM currencies ORDER BY ticker', connection).ticker.to_list()
 # # df.to_sql(table.replace('_A-M', '').replace('_N-Z', ''), engine, if_exists = 'replace', index = False)
 
 # connection.close()
 # engine.dispose()
 # # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks', asset = df[40:])
-# df[103:]
+# df[22:]
 
 #%%
 # update = Update_Assets(key = key, database = db_config, asset_class = 'usa_stocks')
